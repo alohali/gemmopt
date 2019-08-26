@@ -8,7 +8,7 @@
 void REF_MMult(int, int, int, float *, int, float *, int, float *, int );
 void MY_MMult(int, int, int, float *, int, float *, int, float *, int );
 void copy_matrix(int, int, float *, int, float *, int );
-void random_matrix(int, int, float *, int);
+void random_matrix(int, int, float *, int, int);
 float compare_matrices( int, int, float *, int, float *, int );
 
 double dclock();
@@ -52,9 +52,9 @@ int main()
     cref = ( float * ) malloc( ldc * n * sizeof( float ) );
 
     /* Generate random matrices A, B, Cold */
-    random_matrix( m, k, a, lda );
-    random_matrix( k, n, b, ldb );
-    random_matrix( m, n, cold, ldc );
+    random_matrix( m, k, a, lda , 1);
+    random_matrix( k, n, b, ldb , 1);
+    random_matrix( m, n, cold, ldc, 1);
 #if 1 
     memset(cold, 0, ldc * n * sizeof(float));
 #endif
