@@ -29,7 +29,7 @@ int main()
   float 
     *a, *b, *c, *cref, *cold;    
   
-  printf( "MY_MMult = [\n" );
+  printf( "\nSize, Gflops\n" );
     
   for ( p=PFIRST; p<=PLAST; p+=PINC ){
     m = ( M == -1 ? p : M );
@@ -65,21 +65,10 @@ int main()
 
     REF_MMult( m, n, k, a, lda, b, ldb, cref, ldc );
 
-    /* Time the "optimized" implementation */
-    for ( rep=0; rep<NREPEATS; rep++ ){
+    /* check output */
+    for ( rep=0; rep<2; rep++ ){
       copy_matrix( m, n, cold, ldc, c, ldc );
-
-      /* Time your implementation */
-      dtime = dclock();
-
       MY_MMult( m, n, k, a, lda, b, ldb, c, ldc );
-      
-      dtime = dclock() - dtime;
-
-      if ( rep==0 )
-        dtime_best = dtime;
-      else
-	    dtime_best = ( dtime < dtime_best ? dtime : dtime_best );
     }
 
     diff = compare_matrices( m, n, c, ldc, cref, ldc );
@@ -87,7 +76,16 @@ int main()
         exit(0);
     }
 
-    printf( "%d %le %le \n", p, gflops / dtime_best, diff );
+    MY_MMult( m, n, k, a, lda, b, ldb, c, ldc );
+    dtime = dclock();
+    for ( rep=0; rep<NREPEATS; rep++ ){
+      MY_MMult( m, n, k, a, lda, b, ldb, c, ldc );
+    }
+
+    dtime = dclock() - dtime;
+    dtime /= NREPEATS;
+
+    printf( "%d, %.3f\n", p, gflops / dtime);
     fflush( stdout );
 
     free( a );
@@ -97,7 +95,7 @@ int main()
     free( cref );
   }
 
-  printf( "];\n" );
+  printf( "\n" );
 
   exit( 0 );
 }
