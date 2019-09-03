@@ -72,7 +72,7 @@ int main()
     }
 
     diff = compare_matrices( m, n, c, ldc, cref, ldc );
-    if(diff > 0.5f || diff < -0.5f){
+    if(diff > 0.05f || diff < -0.05f){
         exit(0);
     }
 

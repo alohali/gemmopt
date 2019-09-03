@@ -68,6 +68,7 @@ float* fastMalloc(int size){
     return ptr;
 }
 
+float *sa=NULL, *sb=NULL;
 /* Suppose that m%4==0 and n%4==0 and k%4==0, avoiding process boundary !! */
 void MY_MMult(int m, int n, int k, float * restrict a, int lda,
                                    float * restrict b, int ldb,
@@ -81,9 +82,11 @@ void MY_MMult(int m, int n, int k, float * restrict a, int lda,
     printf("\n-------\n");
 #endif
  
-    float* restrict sa = fastMalloc(m * k);
-    float* restrict sb = fastMalloc(k * n);
 
+    if(sa==NULL) {
+        sa = fastMalloc(800*800);
+        sb = fastMalloc(800*800);
+    }
     int ms, mms, ns, ks;
     int min_m, min_mm, min_n, min_k;
     for (ms = 0; ms < m; ms += GEMM_M) {
@@ -140,9 +143,6 @@ void MY_MMult(int m, int n, int k, float * restrict a, int lda,
             }
         }
     }
-
-    free(sa);
-    free(sb);
 }
 
 /**
@@ -236,24 +236,25 @@ asm volatile (
     "INIT8x8                            \n"
     "mov x8,%4                          \n"
     "run:                               \n"
-    //"   prfm pldl1keep, [%0, #64]       \n"
     "   ld1 {v0.4s}, [%0], #16          \n"
-    "   ld1 {v1.4s}, [%0], #16          \n"
-    //"   prfm pldl1keep, [%1, #64]       \n"
     "   ld1 {v2.4s}, [%1], #16          \n"
-    "   ld1 {v3.4s}, [%1], #16          \n"
 
     "   fmla v16.4s, v0.4s, v2.s[0]     \n"
+    "   ld1 {v3.4s}, [%1], #16          \n"
     "   fmla v17.4s, v0.4s, v2.s[1]     \n"
     "   fmla v18.4s, v0.4s, v2.s[2]     \n"
+    "   ld1 {v1.4s}, [%0], #16          \n"
     "   fmla v19.4s, v0.4s, v2.s[3]     \n"
 
     "   fmla v20.4s, v0.4s, v3.s[0]     \n"
+    "   prfm pldl1keep, [%0, #64]       \n"
     "   fmla v21.4s, v0.4s, v3.s[1]     \n"
     "   fmla v22.4s, v0.4s, v3.s[2]     \n"
+    "   prfm pldl1keep, [%1, #64]       \n"
     "   fmla v23.4s, v0.4s, v3.s[3]     \n"
 
     "   fmla v24.4s, v1.4s, v2.s[0]     \n"
+    "   subs x8, x8, #1                 \n"
     "   fmla v25.4s, v1.4s, v2.s[1]     \n"
     "   fmla v26.4s, v1.4s, v2.s[2]     \n"
     "   fmla v27.4s, v1.4s, v2.s[3]     \n"
@@ -262,7 +263,6 @@ asm volatile (
     "   fmla v29.4s, v1.4s, v3.s[1]     \n"
     "   fmla v30.4s, v1.4s, v3.s[2]     \n"
     "   fmla v31.4s, v1.4s, v3.s[3]     \n"
-    "   subs x8, x8, #1                 \n"
     "   bne run                         \n"
     "SAVE8x8                            \n"
     "                                   \n"
