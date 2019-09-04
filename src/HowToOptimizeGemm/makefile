@@ -1,5 +1,5 @@
 OLD  := MMult_4x4_13
-NEW  := 8x8v2
+NEW  := 8x8v4
 #NEW  := MMult_4x4_17
 
 #
@@ -9,7 +9,7 @@ NEW  := 8x8v2
 CC         := gcc
 LINKER     := $(CC)
 #CFLAGS     := -O0 -g -Wall
-CFLAGS     := -O2 -Wall
+CFLAGS     := -Wall -Ofast -flax-vector-conversions  
 LDFLAGS    := -lm
 
 UTIL       := copy_matrix.o \

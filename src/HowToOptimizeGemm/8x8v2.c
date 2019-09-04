@@ -392,6 +392,58 @@ c c c c d d d d e e e e f f f f
 
 Draw it with a line
 */
+void packA_8(int m, int k, float* from, int lda, float* to) {
+    float *src[8];
+    float *dst = to;
+    float32x2_t val[8];
+    float32x2_t tem[8];
+
+    for(int i=0; i<m; i+=8){
+        src[0] = from + i * lda;
+        src[1] = src[0] + lda;
+        src[2] = src[1] + lda;
+        src[3] = src[2] + lda;
+        src[4] = src[3] + lda;
+        src[5] = src[4] + lda;
+        src[6] = src[5] + lda;
+        src[7] = src[6] + lda;
+        for(int j=0; j<k/2; j++){
+           val[0] = vld1_f32(src[0]); 
+           src[0] += 2;
+           val[1] = vld1_f32(src[1]); 
+           src[1] += 2;
+           val[2] = vld1_f32(src[2]); 
+           src[2] += 2;
+           val[3] = vld1_f32(src[3]); 
+           src[3] += 2;
+           val[4] = vld1_f32(src[4]); 
+           src[4] += 2;
+           val[5] = vld1_f32(src[5]); 
+           src[5] += 2;
+           val[6] = vld1_f32(src[6]); 
+           src[6] += 2;
+           val[7] = vld1_f32(src[7]); 
+           src[7] += 2;
+           tem[0] = vtrn1_f32(val[0],val[1]);
+           tem[1] = vtrn2_f32(val[0],val[1]);
+           tem[2] = vtrn1_f32(val[2],val[3]);
+           tem[3] = vtrn2_f32(val[2],val[3]);
+           tem[4] = vtrn1_f32(val[4],val[5]);
+           tem[5] = vtrn2_f32(val[4],val[5]);
+           tem[6] = vtrn1_f32(val[6],val[7]);
+           tem[7] = vtrn2_f32(val[6],val[7]);
+           vst1_f32(dst, tem[0]); 
+           vst1_f32(dst + 2, tem[2]); 
+           vst1_f32(dst + 4, tem[4]); 
+           vst1_f32(dst + 6, tem[6]); 
+           vst1_f32(dst + 8, tem[1]); 
+           vst1_f32(dst + 10, tem[3]); 
+           vst1_f32(dst + 12, tem[5]); 
+           vst1_f32(dst + 14, tem[7]); 
+           dst += 16;
+        }
+    }
+}
 void packA_4(int m, int k, float* from, int lda, float* to) {
 #ifdef DEBUG_PACK_SHAPE
     printf("\n packA_4, m=%d, k=%d", m, k);

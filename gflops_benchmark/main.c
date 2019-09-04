@@ -16,8 +16,8 @@ int main() {
     struct timespec start, end;
     double time_used = 0.0;
 
+    func2(LOOP);
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-//    func1(LOOP);
     func2(LOOP);
     clock_gettime(CLOCK_MONOTONIC_RAW, &end);
 
