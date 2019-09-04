@@ -70,7 +70,7 @@ int main()
       copy_matrix( m, n, cold, ldc, c, ldc );
       MY_MMult( m, n, k, a, lda, b, ldb, c, ldc );
     }
-    static int compare = 0;
+    static int compare = 1;
     if(compare)
         diff = compare_matrices( m, n, c, ldc, cref, ldc );
     if(diff > 0.05f || diff < -0.05f){

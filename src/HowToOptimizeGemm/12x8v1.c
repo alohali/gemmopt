@@ -50,16 +50,16 @@ After reading 6.4, rk3399 L2 cache is large, mc = 1MB / 256 = 4096
 
 */
 #define GEMM_N (512)  // GEMM_R
-#define GEMM_M (1024)  // GEMM_P
+#define GEMM_M (384*3)  // GEMM_P
 #define GEMM_K (256)  // GEMM_Q
-#define GEMM_UNROLL (8)
-#define KERNEL_8x8  kernel_8x8_v1
+#define GEMM_UNROLL (12)
+#define KERNEL_12x8  kernel_12x8_v1
 
 /* Routine for computing C = A * B + C */
 void packB_8(int k, int n, float* from, int ldb, float* to);
 void packA_8(int m, int k, float* from, int lda, float* to);
 void packA_4(int m, int k, float* from, int lda, float* to);
-void kernel_8x8_v1(int m, int n, int k, 
+void kernel_12x8_v1(int m, int n, int k, 
         float* sa, float* sb, float* sc, int ldc);
 
 float* fastMalloc(int size){
@@ -72,21 +72,24 @@ void packA_4(int m, int k, float* from, int lda, float* to) {
 #ifdef DEBUG_PACK_SHAPE
     printf("\n packA_4, m=%d, k=%d", m, k);
 #endif
-    assert( k != 0 && m != 0 && k % 4 == 0 && m % 4 == 0);
+    assert( k != 0 && m != 0 && k % 4 == 0 && m % 12 == 0);
     int i, j;
 
     float *a_offset, *a_offset1, *a_offset2, *a_offset3, *a_offset4;
-    float *a_offset8, *a_offset5, *a_offset6, *a_offset7;
+    float *a_offset5, *a_offset6, *a_offset7, *a_offset8;
+    float *a_offset9, *a_offset10, *a_offset11, *a_offset12;
     float *b_offset;
     float  ctemp1,  ctemp2,  ctemp3,  ctemp4;
     float  ctemp5,  ctemp6,  ctemp7,  ctemp8;
     float  ctemp9, ctemp10, ctemp11, ctemp12;
     float ctemp13, ctemp14, ctemp15, ctemp16;
+    float ctemp17, ctemp18, ctemp19, ctemp20;
+    float ctemp21, ctemp22, ctemp23, ctemp24;
 
     a_offset = from;
     b_offset = to;
 
-    j = (m >> 3);
+    j = (m / 12);
     do{
         a_offset1  = a_offset;
         a_offset2  = a_offset1 + lda;
@@ -96,7 +99,11 @@ void packA_4(int m, int k, float* from, int lda, float* to) {
         a_offset6  = a_offset5 + lda;
         a_offset7  = a_offset6 + lda;
         a_offset8  = a_offset7 + lda;
-        a_offset += 8 * lda;
+        a_offset9  = a_offset8 + lda;
+        a_offset10  = a_offset9 + lda;
+        a_offset11  = a_offset10 + lda;
+        a_offset12  = a_offset11 + lda;
+        a_offset += 12 * lda;
 
         i = (k >> 1);
         do{
@@ -120,6 +127,15 @@ void packA_4(int m, int k, float* from, int lda, float* to) {
             ctemp15 = *(a_offset8 + 0);
             ctemp16 = *(a_offset8 + 1);
 
+            ctemp17 = *(a_offset9 + 0);
+            ctemp18 = *(a_offset9 + 1);
+            ctemp19 = *(a_offset10 + 0);
+            ctemp20 = *(a_offset10 + 1);
+
+            ctemp21 = *(a_offset11 + 0);
+            ctemp22 = *(a_offset11 + 1);
+            ctemp23 = *(a_offset12 + 0);
+            ctemp24 = *(a_offset12 + 1);
             *(b_offset +  0) = ctemp1;
             *(b_offset +  1) = ctemp3;
             *(b_offset +  2) = ctemp5;
@@ -130,15 +146,25 @@ void packA_4(int m, int k, float* from, int lda, float* to) {
             *(b_offset +  6) = ctemp13;
             *(b_offset +  7) = ctemp15;
 
-            *(b_offset +  8) = ctemp2;
-            *(b_offset +  9) = ctemp4;
-            *(b_offset + 10) = ctemp6;
-            *(b_offset + 11) = ctemp8;
+            *(b_offset +  8) = ctemp17;
+            *(b_offset +  9) = ctemp19;
+            *(b_offset + 10) = ctemp21;
+            *(b_offset + 11) = ctemp23;
 
-            *(b_offset + 12) = ctemp10;
-            *(b_offset + 13) = ctemp12;
-            *(b_offset + 14) = ctemp14;
-            *(b_offset + 15) = ctemp16;
+            *(b_offset + 12) = ctemp2;
+            *(b_offset + 13) = ctemp4;
+            *(b_offset + 14) = ctemp6;
+            *(b_offset + 15) = ctemp8;
+
+            *(b_offset + 16) = ctemp10;
+            *(b_offset + 17) = ctemp12;
+            *(b_offset + 18) = ctemp14;
+            *(b_offset + 19) = ctemp16;
+
+            *(b_offset + 20) = ctemp18;
+            *(b_offset + 21) = ctemp20;
+            *(b_offset + 22) = ctemp22;
+            *(b_offset + 23) = ctemp24;
 
             a_offset1 += 2;
             a_offset2 += 2;
@@ -148,8 +174,12 @@ void packA_4(int m, int k, float* from, int lda, float* to) {
             a_offset6 += 2;
             a_offset7 += 2;
             a_offset8 += 2;
+            a_offset9 += 2;
+            a_offset10 += 2;
+            a_offset11 += 2;
+            a_offset12 += 2;
 
-            b_offset += 16;
+            b_offset += 24;
             i --;
         }while(i > 0);
         j --;
@@ -184,12 +214,9 @@ void MY_MMult(int m, int n, int k, float * restrict a, int lda,
 
         for (ks = 0; ks < k; ks += min_k){
             min_k = k - ks;
-            if (min_k >= (GEMM_K << 1)) {
+            if (min_k >= (GEMM_K)) {
                 min_k = GEMM_K;
-            } else if (min_k > GEMM_K) {
-                min_k = (min_k / 2 + GEMM_UNROLL - 1) & ~(GEMM_UNROLL - 1);
-            }
-
+            } 
             // first packB
             min_n = n;
             if (n >= GEMM_N * 2) {
@@ -197,8 +224,8 @@ void MY_MMult(int m, int n, int k, float * restrict a, int lda,
             } else if(n > GEMM_N) {
                 min_n = (min_n / 2 + GEMM_UNROLL - 1) & ~(GEMM_UNROLL - 1);
             }
-            packB_8(min_k, min_n, b + ks * ldb, ldb, sb);
 
+            packB_8(min_k, min_n, b + ks * ldb, ldb, sb);
             // micro kernel, split A Block to smaller Panel
             for (mms = ms; mms < ms + min_m; mms += min_mm) {
                 min_mm = (ms + min_m) - mms;
@@ -211,7 +238,7 @@ void MY_MMult(int m, int n, int k, float * restrict a, int lda,
                 // coninueous packA
                 packA_4(min_mm, min_k, a + mms * lda + ks, lda, sa + min_k * (mms - ms));
 
-                KERNEL_8x8(min_mm, min_n, min_k, sa + min_k * (mms - ms), sb, c + mms * ldc, ldc);
+                KERNEL_12x8(min_mm, min_n, min_k, sa + min_k * (mms - ms), sb, c + mms * ldc, ldc);
             }
 
             // the first B Block has been packed, proc the others 
@@ -224,7 +251,7 @@ void MY_MMult(int m, int n, int k, float * restrict a, int lda,
                 }
 
                 packB_8(min_k, min_n, b + ns + ldb * ks, ldb, sb);
-                KERNEL_8x8(min_m, min_n, min_k, sa, sb, c + ms * ldc + ns, ldc);
+                KERNEL_12x8(min_m, min_n, min_k, sa, sb, c + ms * ldc + ns, ldc);
             }
         }
     }
@@ -258,200 +285,149 @@ C4 C5 C6
 C7 C8 C9
 
  */
-void kernel_8x8_v1(int m, int n, int k,
+void kernel_12x8_v1(int m, int n, int k,
     float* sa, float * sb, float* sc, int ldc) {
     assert(m > 0 && n > 0 && k > 0);
-    assert(m % 8 == 0 && n % 8 == 0 && k % 8 == 0);
+    assert(m % 12 == 0 && n % 8 == 0 && k % 8 == 0);
 
     float *restrict a = sa, *restrict b = sb, *restrict c = sc;
 //#if __aarch64__
-#define ASMTEST 1 
-#if ASMTEST
-    int ldc_offset = ldc * sizeof(float);
-#endif
+    int ldc_offset = ldc * sizeof(float) - 16;
     int i, j, l;
-    for(i = 0; i < m; i += 8) {
+    for(i = 0; i < m; i += 12) {
         for(j = 0; j < n; j += 8) {
-#if ASMTEST 
-asm volatile (
-    ".macro INIT8x8                     \n"
-    "   mov x9,        %2               \n"
-    "   add x13,       x9 , #16         \n"
-    "   ld1 {v16.4s}, [x9], %3          \n"
-    "   ld1 {v17.4s}, [x9], %3          \n"
-    "   ld1 {v18.4s}, [x9], %3          \n"
-    "   ld1 {v19.4s}, [x9], %3          \n"
-    "   ld1 {v20.4s}, [x9], %3          \n"
-    "   ld1 {v21.4s}, [x9], %3          \n"
-    "   ld1 {v22.4s}, [x9], %3          \n"
-    "   ld1 {v23.4s}, [x9]              \n"
-    "   ld1 {v24.4s}, [x13], %3         \n"
-    "   ld1 {v25.4s}, [x13], %3         \n"
-    "   ld1 {v26.4s}, [x13], %3         \n"
-    "   ld1 {v27.4s}, [x13], %3         \n"
-    "   ld1 {v28.4s}, [x13], %3         \n"
-    "   ld1 {v29.4s}, [x13], %3         \n"
-    "   ld1 {v30.4s}, [x13], %3         \n"
-    "   ld1 {v31.4s}, [x13]             \n"
-    ".endm                              \n" 
-    "                                   \n"
-    ".macro SAVE8x8                     \n"
-    "   mov x9,        %2               \n"
-    "   add x13,       x9 , #16         \n"
-    "   st1 {v16.4s}, [x9], %3          \n"
-    "   st1 {v17.4s}, [x9], %3          \n"
-    "   st1 {v18.4s}, [x9], %3          \n"
-    "   st1 {v19.4s}, [x9], %3          \n"
-    "   st1 {v20.4s}, [x9], %3          \n"
-    "   st1 {v21.4s}, [x9], %3          \n"
-    "   st1 {v22.4s}, [x9], %3          \n"
-    "   st1 {v23.4s}, [x9]              \n"
-    "   st1 {v24.4s}, [x13], %3         \n"
-    "   st1 {v25.4s}, [x13], %3         \n"
-    "   st1 {v26.4s}, [x13], %3         \n"
-    "   st1 {v27.4s}, [x13], %3         \n"
-    "   st1 {v28.4s}, [x13], %3         \n"
-    "   st1 {v29.4s}, [x13], %3         \n"
-    "   st1 {v30.4s}, [x13], %3         \n"
-    "   st1 {v31.4s}, [x13]             \n"
-    ".endm                              \n" 
-    "                                   \n"
-    //"   prfm pldl1keep, [%0]            \n"
-    //"   prfm pldl1keep, [%1]            \n"
-    "INIT8x8                            \n"
-    "mov x8,%4                          \n"
-    "run:                               \n"
-    "   ld1 {v0.4s}, [%0], #16          \n"
-    "   ld1 {v2.4s}, [%1], #16          \n"
-
-    "   fmla v16.4s, v0.4s, v2.s[0]     \n"
-    "   ld1 {v3.4s}, [%1], #16          \n"
-    "   fmla v17.4s, v0.4s, v2.s[1]     \n"
-    "   fmla v18.4s, v0.4s, v2.s[2]     \n"
-    "   ld1 {v1.4s}, [%0], #16          \n"
-    "   fmla v19.4s, v0.4s, v2.s[3]     \n"
-
-    "   fmla v20.4s, v0.4s, v3.s[0]     \n"
-    "   prfm pldl1keep, [%0, #64]       \n"
-    "   fmla v21.4s, v0.4s, v3.s[1]     \n"
-    "   fmla v22.4s, v0.4s, v3.s[2]     \n"
-    "   prfm pldl1keep, [%1, #64]       \n"
-    "   fmla v23.4s, v0.4s, v3.s[3]     \n"
-
-    "   fmla v24.4s, v1.4s, v2.s[0]     \n"
-    "   subs x8, x8, #1                 \n"
-    "   fmla v25.4s, v1.4s, v2.s[1]     \n"
-    "   prfm pldl1keep, [%0, #128]       \n"
-    "   fmla v26.4s, v1.4s, v2.s[2]     \n"
-    "   fmla v27.4s, v1.4s, v2.s[3]     \n"
-    "   prfm pldl1keep, [%1, #128]       \n"
-
-    "   fmla v28.4s, v1.4s, v3.s[0]     \n"
-    "   prfm pldl1keep, [%0, #192]       \n"
-    "   fmla v29.4s, v1.4s, v3.s[1]     \n"
-    "   fmla v30.4s, v1.4s, v3.s[2]     \n"
-    "   prfm pldl1keep, [%1, #192]       \n"
-    "   fmla v31.4s, v1.4s, v3.s[3]     \n"
-    "   bne run                         \n"
-    "SAVE8x8                            \n"
-    "                                   \n"
-    : "=r"(b),
-      "=r"(a),
-      "=r"(c),
-      "=r"(ldc_offset),
-      "=r"(k)
-    : "0"(b),
-      "1"(a),
-      "2"(c),
-      "3"(ldc_offset),
-      "4"(k)
-    : "memory", "cc", "x8", "x9","x13", "x14", 
-    "v0", "v1", "v2", "v3",  
-    "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23", 
-    "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31"
-);  
-#else
-            __builtin_prefetch(b, 0, 3);
-            __builtin_prefetch(a, 0, 3);
-
-            float32x4_t v16 = (vld1q_f32(c));
-            float32x4_t v17 = (vld1q_f32(c + ldc));
-            float32x4_t v18 = (vld1q_f32(c + 2*ldc));
-            float32x4_t v19 = (vld1q_f32(c + 3*ldc));
-            float32x4_t v20 = (vld1q_f32(c + 4*ldc));
-            float32x4_t v21 = (vld1q_f32(c + 5*ldc));
-            float32x4_t v22 = (vld1q_f32(c + 6*ldc));
-            float32x4_t v23 = (vld1q_f32(c + 7*ldc));
-            float32x4_t v24 = (vld1q_f32(c + 4));
-            float32x4_t v25 = (vld1q_f32(c + 4 + ldc));
-            float32x4_t v26 = (vld1q_f32(c + 4 + 2*ldc));
-            float32x4_t v27 = (vld1q_f32(c + 4 + 3*ldc));
-            float32x4_t v28 = (vld1q_f32(c + 4 + 4*ldc));
-            float32x4_t v29 = (vld1q_f32(c + 4 + 5*ldc));
-            float32x4_t v30 = (vld1q_f32(c + 4 + 6*ldc));
-            float32x4_t v31 = (vld1q_f32(c + 4 + 7*ldc));
-
-            for(l = 0; l < k; l++) {
-                float32x4_t v0 = vld1q_f32(b);
-                float32x4_t v1 = vld1q_f32(b+4);
-                float32x4_t v2 = vld1q_f32(a);
-                float32x4_t v3 = vld1q_f32(a+4);
-
-                __builtin_prefetch(b+16, 0, 3);
-                __builtin_prefetch(a+16, 0, 3);
-
-                v16 = vmlaq_laneq_f32(v16, v0, v2, 0);
-                v17 = vmlaq_laneq_f32(v17, v0, v2, 1);
-                v18 = vmlaq_laneq_f32(v18, v0, v2, 2);
-                v19 = vmlaq_laneq_f32(v19, v0, v2, 3);
-
-                v20 = vmlaq_laneq_f32(v20, v0, v3, 0);
-                v21 = vmlaq_laneq_f32(v21, v0, v3, 1);
-                v22 = vmlaq_laneq_f32(v22, v0, v3, 2);
-                v23 = vmlaq_laneq_f32(v23, v0, v3, 3);
-
-                v24 = vmlaq_laneq_f32(v24, v1, v2, 0);
-                v25 = vmlaq_laneq_f32(v25, v1, v2, 1);
-                v26 = vmlaq_laneq_f32(v26, v1, v2, 2);
-                v27 = vmlaq_laneq_f32(v27, v1, v2, 3);
-
-                v28 = vmlaq_laneq_f32(v28, v1, v3, 0);
-                v29 = vmlaq_laneq_f32(v29, v1, v3, 1);
-                v30 = vmlaq_laneq_f32(v30, v1, v3, 2);
-                v31 = vmlaq_laneq_f32(v31, v1, v3, 3);
-
-
-                b += 8;
-                a += 8;
-            } // endl
-            
-
-            vst1q_f32(c, v16);
-            vst1q_f32(c + ldc, v17);
-            vst1q_f32(c + 2 * ldc, v18);
-            vst1q_f32(c + 3 * ldc, v19);
-            vst1q_f32(c + 4 * ldc, v20);
-            vst1q_f32(c + 5 * ldc, v21);
-            vst1q_f32(c + 6 * ldc, v22);
-            vst1q_f32(c + 7 * ldc, v23);
-
-            vst1q_f32(c + 4, v24);
-            vst1q_f32(c + 4 + ldc, v25);
-            vst1q_f32(c + 4 + 2 * ldc, v26);
-            vst1q_f32(c + 4 + 3 * ldc, v27);
-            vst1q_f32(c + 4 + 4 * ldc, v28);
-            vst1q_f32(c + 4 + 5 * ldc, v29);
-            vst1q_f32(c + 4 + 6 * ldc, v30);
-            vst1q_f32(c + 4 + 7 * ldc, v31);
-
-#endif
+        asm volatile (
+            ".macro INIT12x8                     \n"
+            "   mov x9,        %2               \n"
+            "   ld1 {v8.4s},  [x9], #16         \n"
+            "   ld1 {v20.4s}, [x9], %3          \n"
+            "   ld1 {v9.4s},  [x9], #16         \n"
+            "   ld1 {v21.4s}, [x9], %3          \n"
+            "   ld1 {v10.4s}, [x9], #16         \n"
+            "   ld1 {v22.4s}, [x9], %3          \n"
+            "   ld1 {v11.4s}, [x9], #16         \n"
+            "   ld1 {v23.4s}, [x9], %3          \n"
+            "   ld1 {v12.4s}, [x9], #16         \n"
+            "   ld1 {v24.4s}, [x9], %3          \n"
+            "   ld1 {v13.4s}, [x9], #16         \n"
+            "   ld1 {v25.4s}, [x9], %3          \n"
+            "   ld1 {v14.4s}, [x9], #16         \n"
+            "   ld1 {v26.4s}, [x9], %3          \n"
+            "   ld1 {v15.4s}, [x9], #16         \n"
+            "   ld1 {v27.4s}, [x9], %3          \n"
+            "   ld1 {v16.4s}, [x9], #16         \n"
+            "   ld1 {v28.4s}, [x9], %3          \n"
+            "   ld1 {v17.4s}, [x9], #16         \n"
+            "   ld1 {v29.4s}, [x9], %3          \n"
+            "   ld1 {v18.4s}, [x9], #16         \n"
+            "   ld1 {v30.4s}, [x9], %3          \n"
+            "   ld1 {v19.4s}, [x9], #16         \n"
+            "   ld1 {v31.4s}, [x9]              \n"
+            ".endm                              \n" 
+            "                                   \n"
+            ".macro SAVE12x8                     \n"
+            "   mov x9,        %2               \n"
+            "   st1 {v8.4s},  [x9], #16         \n"
+            "   st1 {v20.4s}, [x9], %3          \n"
+            "   st1 {v9.4s},  [x9], #16         \n"
+            "   st1 {v21.4s}, [x9], %3          \n"
+            "   st1 {v10.4s}, [x9], #16         \n"
+            "   st1 {v22.4s}, [x9], %3          \n"
+            "   st1 {v11.4s}, [x9], #16         \n"
+            "   st1 {v23.4s}, [x9], %3          \n"
+            "   st1 {v12.4s}, [x9], #16         \n"
+            "   st1 {v24.4s}, [x9], %3          \n"
+            "   st1 {v13.4s}, [x9], #16         \n"
+            "   st1 {v25.4s}, [x9], %3          \n"
+            "   st1 {v14.4s}, [x9], #16         \n"
+            "   st1 {v26.4s}, [x9], %3          \n"
+            "   st1 {v15.4s}, [x9], #16         \n"
+            "   st1 {v27.4s}, [x9], %3          \n"
+            "   st1 {v16.4s}, [x9], #16         \n"
+            "   st1 {v28.4s}, [x9], %3          \n"
+            "   st1 {v17.4s}, [x9], #16         \n"
+            "   st1 {v29.4s}, [x9], %3          \n"
+            "   st1 {v18.4s}, [x9], #16         \n"
+            "   st1 {v30.4s}, [x9], %3          \n"
+            "   st1 {v19.4s}, [x9], #16         \n"
+            "   st1 {v31.4s}, [x9]              \n"
+            ".endm                              \n" 
+            "                                   \n"
+            //"   prfm pldl1keep, [%0]            \n"
+            //"   prfm pldl1keep, [%1]            \n"
+            "INIT12x8                            \n"
+            "mov x8,%4                          \n"
+            "run:                               \n"
+            "   ld1 {v0.4s}, [%0], #16          \n"
+            "   ld1 {v2.4s}, [%1], #16          \n"
+        
+            "   fmla v8.4s , v0.4s, v2.s[0]     \n"
+            "   ld1 {v3.4s}, [%1], #16          \n"
+            "   fmla v9.4s , v0.4s, v2.s[1]     \n"
+            "   fmla v10.4s, v0.4s, v2.s[2]     \n"
+            "   ld1 {v4.4s}, [%1], #16          \n"
+            "   fmla v11.4s, v0.4s, v2.s[3]     \n"
+        
+            "   fmla v12.4s, v0.4s, v3.s[0]     \n"
+            "   ld1 {v1.4s}, [%0], #16          \n"
+            "   fmla v13.4s, v0.4s, v3.s[1]     \n"
+            "   fmla v14.4s, v0.4s, v3.s[2]     \n"
+            "   prfm pldl1keep, [%0, #64]       \n"
+            "   fmla v15.4s, v0.4s, v3.s[3]     \n"
+        
+            "   fmla v16.4s, v0.4s, v4.s[0]     \n"
+            "   prfm pldl1keep, [%1, #64]       \n"
+            "   fmla v17.4s, v0.4s, v4.s[1]     \n"
+            "   fmla v18.4s, v0.4s, v4.s[2]     \n"
+            "   prfm pldl1keep, [%0, #128]       \n"
+            "   fmla v19.4s, v0.4s, v4.s[3]     \n"
+        
+            "   fmla v20.4s, v1.4s, v2.s[0]     \n"
+            "   prfm pldl1keep, [%1, #128]       \n"
+            "   fmla v21.4s, v1.4s, v2.s[1]     \n"
+            "   fmla v22.4s, v1.4s, v2.s[2]     \n"
+            "   prfm pldl1keep, [%0, #192]       \n"
+            "   fmla v23.4s, v1.4s, v2.s[3]     \n"
+            "   subs x8, x8, #1                 \n"
+        
+            "   fmla v24.4s, v1.4s, v3.s[0]     \n"
+            "   prfm pldl1keep, [%1, #192]       \n"
+            "   fmla v25.4s, v1.4s, v3.s[1]     \n"
+            "   fmla v26.4s, v1.4s, v3.s[2]     \n"
+            "   prfm pldl1keep, [%0, #256]       \n"
+            "   fmla v27.4s, v1.4s, v3.s[3]     \n"
+        
+            "   fmla v28.4s, v1.4s, v4.s[0]     \n"
+            "   prfm pldl1keep, [%1, #256]       \n"
+            "   fmla v29.4s, v1.4s, v4.s[1]     \n"
+            "   fmla v30.4s, v1.4s, v4.s[2]     \n"
+            "   fmla v31.4s, v1.4s, v4.s[3]     \n"
+            "   bne run                         \n"
+            "SAVE12x8                            \n"
+            "                                   \n"
+            : "=r"(b),
+              "=r"(a),
+              "=r"(c),
+              "=r"(ldc_offset),
+              "=r"(k)
+            : "0"(b),
+              "1"(a),
+              "2"(c),
+              "3"(ldc_offset),
+              "4"(k)
+            : "memory", "cc", "x8", "x9","x14", 
+            "v0", "v1", "v2", "v3", "v4",  
+            "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15",  
+            "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23", 
+            "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31"
+        );  
 
             c += 8;
-            a -= 8*k;
+            a -= 12*k;
         } // endj
-        sc += ldc*8;
+        sc += ldc*12;
         c = sc;
-        a += 8*k;
+        a += 12*k;
         b = sb;
     }// endi
 }

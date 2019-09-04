@@ -19,7 +19,7 @@ float compare_matrices( int m, int n, float *a, int lda, float *b, int ldb )
     for ( j=0; j<n; j++ ){
       diff = abs( A( i,j ) - B( i,j ) );
       max_diff = ( diff > max_diff ? diff : max_diff );
-      if(16 >= printed)
+      if(100 >= printed)
       if(diff > 0.5f || diff < -0.5f) {
         printf("\n error: i %d  j %d diff %f a %f, b %f\n", i, j, max_diff, A(i, j), B(i,j));
         printed += 1;

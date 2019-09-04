@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#define A( i,j ) a[ (j)*lda + (i) ]
+#define A( i,j ) a[ (i)*lda + (j) ]
 
 void random_matrix( int m, int n, float *a, int lda, int random )
 {
