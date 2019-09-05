@@ -13,7 +13,7 @@ float compare_matrices( int, int, float *, int, float *, int );
 
 double dclock();
 
-int main()
+int main(int argc, char**argv)
 {
   int 
     p, 
@@ -31,6 +31,10 @@ int main()
   
   printf( "\nSize, Gflops\n" );
     
+  int compare = 1;
+  if(argc>1){
+    compare = atoi(argv[1]);
+  }
   for ( p=PFIRST; p<=PLAST; p+=PINC ){
     m = ( M == -1 ? p : M );
     n = ( N == -1 ? p : N );
@@ -70,7 +74,6 @@ int main()
       copy_matrix( m, n, cold, ldc, c, ldc );
       MY_MMult( m, n, k, a, lda, b, ldb, c, ldc );
     }
-    static int compare = 1;
     if(compare)
         diff = compare_matrices( m, n, c, ldc, cref, ldc );
     if(diff > 0.05f || diff < -0.05f){

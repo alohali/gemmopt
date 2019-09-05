@@ -355,11 +355,11 @@ void kernel_12x8_v1(int m, int n, int k,
             "                                   \n"
             //"   prfm pldl1keep, [%0]            \n"
             //"   prfm pldl1keep, [%1]            \n"
+            "   ld1 {v0.4s}, [%0], #16          \n"
+            "   ld1 {v2.4s}, [%1], #16          \n"
             "INIT12x8                            \n"
             "mov x8,%4                          \n"
             "run:                               \n"
-            "   ld1 {v0.4s}, [%0], #16          \n"
-            "   ld1 {v2.4s}, [%1], #16          \n"
         
             "   fmla v8.4s , v0.4s, v2.s[0]     \n"
             "   ld1 {v3.4s}, [%1], #16          \n"
@@ -372,35 +372,36 @@ void kernel_12x8_v1(int m, int n, int k,
             "   ld1 {v1.4s}, [%0], #16          \n"
             "   fmla v13.4s, v0.4s, v3.s[1]     \n"
             "   fmla v14.4s, v0.4s, v3.s[2]     \n"
-            "   prfm pldl1keep, [%0, #64]       \n"
+            "   prfm pldl1keep, [%1, #64]       \n"
             "   fmla v15.4s, v0.4s, v3.s[3]     \n"
         
             "   fmla v16.4s, v0.4s, v4.s[0]     \n"
-            "   prfm pldl1keep, [%1, #64]       \n"
+            "   prfm pldl1keep, [%0, #64]       \n"
             "   fmla v17.4s, v0.4s, v4.s[1]     \n"
             "   fmla v18.4s, v0.4s, v4.s[2]     \n"
-            "   prfm pldl1keep, [%0, #128]       \n"
+            "   prfm pldl1keep, [%1, #128]       \n"
             "   fmla v19.4s, v0.4s, v4.s[3]     \n"
         
             "   fmla v20.4s, v1.4s, v2.s[0]     \n"
-            "   prfm pldl1keep, [%1, #128]       \n"
+            "   ld1 {v0.4s}, [%0], #16          \n"
             "   fmla v21.4s, v1.4s, v2.s[1]     \n"
             "   fmla v22.4s, v1.4s, v2.s[2]     \n"
-            "   prfm pldl1keep, [%0, #192]       \n"
+            "   prfm pldl1keep, [%0, #128]       \n"
             "   fmla v23.4s, v1.4s, v2.s[3]     \n"
             "   subs x8, x8, #1                 \n"
         
             "   fmla v24.4s, v1.4s, v3.s[0]     \n"
-            "   prfm pldl1keep, [%1, #192]       \n"
+            "   ld1 {v2.4s}, [%1], #16          \n"
             "   fmla v25.4s, v1.4s, v3.s[1]     \n"
             "   fmla v26.4s, v1.4s, v3.s[2]     \n"
-            "   prfm pldl1keep, [%0, #256]       \n"
+            "   prfm pldl1keep, [%1, #192]       \n"
             "   fmla v27.4s, v1.4s, v3.s[3]     \n"
         
             "   fmla v28.4s, v1.4s, v4.s[0]     \n"
-            "   prfm pldl1keep, [%1, #256]       \n"
+            "   prfm pldl1keep, [%0, #192]       \n"
             "   fmla v29.4s, v1.4s, v4.s[1]     \n"
             "   fmla v30.4s, v1.4s, v4.s[2]     \n"
+            "   prfm pldl1keep, [%1, #256]       \n"
             "   fmla v31.4s, v1.4s, v4.s[3]     \n"
             "   bne run                         \n"
             "SAVE12x8                            \n"
@@ -416,14 +417,15 @@ void kernel_12x8_v1(int m, int n, int k,
               "3"(ldc_offset),
               "4"(k)
             : "memory", "cc", "x8", "x9","x14", 
-            "v0", "v1", "v2", "v3", "v4",  
+            "v0", "v1", "v2", "v3", "v4", 
             "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15",  
             "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23", 
             "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31"
         );  
 
             c += 8;
-            a -= 12*k;
+            a -= 12*k + 4;
+            b -= 4;
         } // endj
         sc += ldc*12;
         c = sc;
