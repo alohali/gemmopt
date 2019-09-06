@@ -8,15 +8,14 @@ NEW  := 12x8v1
 
 CC         := gcc
 LINKER     := $(CC)
-#CFLAGS     := -O0 -g -Wall
-CFLAGS     := -Wall -Ofast -flax-vector-conversions  
+CFLAGS     := -O0 -g -Wall
+#CFLAGS     := -Wall -O2 -flax-vector-conversions  
 LDFLAGS    := -lm
 
 UTIL       := copy_matrix.o \
               compare_matrices.o \
               random_matrix.o \
               dclock.o \
-              REF_MMult.o \
               print_matrix.o
 
 TEST_OBJS  := test_MMult.o $(NEW).o 

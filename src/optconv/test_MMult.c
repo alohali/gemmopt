@@ -2,11 +2,12 @@
 // #include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
+#include "refconv.h"
 
 #include "parameters.h"
 
 void REF_MMult(int, int, int, float *, int, float *, int, float *, int );
-void MY_MMult(int, int, int, float *, int, float *, int, float *, int );
+void MY_IM_GEMM(int, int, int,int, float *, float *, float *);
 void copy_matrix(int, int, float *, int, float *, int );
 void random_matrix(int, int, float *, int, int);
 float compare_matrices( int, int, float *, int, float *, int );
@@ -35,56 +36,46 @@ int main(int argc, char**argv)
   if(argc>1){
     compare = atoi(argv[1]);
   }
-  for ( p=PFIRST; p<=PLAST; p+=PINC ){
-    m = ( M == -1 ? p : M );
-    n = ( N == -1 ? p : N );
-    k = ( K == -1 ? p : K );
-
-    gflops = 2.0 * m * n * k * 1.0e-09;
-
-    lda = ( LDA == -1 ? m : LDA );
-    ldb = ( LDB == -1 ? k : LDB );
-    ldc = ( LDC == -1 ? m : LDC );
+//  for ( p=PFIRST; p<=PLAST; p+=PINC ){
+  {
+    int cin = 64;
+    int hout = 3*16;
+    int hin  = hout + 2;
+    int wout = 4*16;
+    int win  = wout + 2; 
+    int cout = 64;
+    gflops = 2.0 * cin * cout * hout * wout * 9 * 1.0e-09;
 
     /* Allocate space for the matrices */
     /* Note: I create an extra column in A to make sure that
        prefetching beyond the matrix does not cause a segfault */
-    a = ( float * ) malloc( lda * (k+1) * sizeof( float ) );  
-    b = ( float * ) malloc( ldb * n * sizeof( float ) );
-    c = ( float * ) malloc( ldc * n * sizeof( float ) );
-    cold = ( float * ) malloc( ldc * n * sizeof( float ) );
-    cref = ( float * ) malloc( ldc * n * sizeof( float ) );
+    a = ( float * ) malloc( hin * win * (cin+1) * sizeof( float ) );  
+    b = ( float * ) malloc( cin * cout * 10 * sizeof( float ) );
+    c = ( float * ) malloc( hout * wout * cout * 2 * sizeof( float ) );
+    cref = ( float * ) malloc( hout * wout * cout*2 * sizeof( float ) );
 
     /* Generate random matrices A, B, Cold */
-    random_matrix( m, k, a, lda , 1);
-    random_matrix( k, n, b, ldb , 1);
-    random_matrix( m, n, cold, ldc, 1);
-#if 1 
-    memset(cold, 0, ldc * n * sizeof(float));
-#endif
+    random_matrix( cin, hin*win, a, hin*win , 0);
+    random_matrix( cout, cin * 9, b, cin * 9 , 0);
 
-    copy_matrix( m, n, cold, ldc, cref, ldc );
-
-    /* Run the reference implementation so the answers can be compared */
-
-    REF_MMult( m, n, k, a, lda, b, ldb, cref, ldc );
+    ref_conv( cout, hout, wout, cin, a, b, cref);
 
     /* check output */
     for ( rep=0; rep<2; rep++ ){
-      copy_matrix( m, n, cold, ldc, c, ldc );
-      MY_MMult( m, n, k, a, lda, b, ldb, c, ldc );
+	  memset(c, 0, hout*wout*cout*sizeof(float));
+      MY_IM_GEMM( cin, cout, hout, wout, a,  b, c);
     }
     if(compare)
-        diff = compare_matrices( m, n, c, ldc, cref, ldc );
+        diff = compare_matrices( cout, hout*wout, c, hout*wout, cref, hout*wout );
     if(diff > 0.05f || diff < -0.05f){
         compare = 0;
         diff = 0;
     }
 
-    MY_MMult( m, n, k, a, lda, b, ldb, c, ldc );
+    MY_IM_GEMM( cin, cout, hout, wout, a,  b, c);
     dtime = dclock();
     for ( rep=0; rep<NREPEATS; rep++ ){
-      MY_MMult( m, n, k, a, lda, b, ldb, c, ldc );
+      MY_IM_GEMM( cin, cout, hout, wout, a,  b, c);
     }
 
     dtime = dclock() - dtime;
@@ -96,7 +87,6 @@ int main(int argc, char**argv)
     free( a );
     free( b );
     free( c );
-    free( cold );
     free( cref );
   }
 
