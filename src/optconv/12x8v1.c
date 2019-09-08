@@ -13,7 +13,6 @@
 #define DEBUG_PRINT_DATA
 #undef DEBUG_PRINT_DATA
 
-/* Create macros so that the matrices are stored in row-major order */
 
 #define A(i,j) a[ (i)*lda + (j) ]
 #define B(i,j) b[ (i)*ldb + (j) ]
@@ -29,10 +28,8 @@
 #define R         (3)  // GEMM_Q
 #define W_UNROLL (4)
 #define H_UNROLL (3)
-#define KERNEL_12x8  kernel_12x8_v1
 
-/* Routine for computing C = A * B + C */
-void kernel_12x8_v1(int hout, int wout, int n, int k, float* sa, float * sb, float* sc, int hsout, int csout); 
+void kernel12x8(int hout, int wout, int n, int k, float* sa, float * sb, float* sc, int hsout, int csout); 
 
 float* fastMalloc(int size){
     void* ptr = 0;
@@ -40,6 +37,42 @@ float* fastMalloc(int size){
     assert(0 == iRet);
     return ptr;
 }
+
+void packB_k8(int cin, int cout, float* from, float* to) {
+
+    float *src[8];
+    float *dst = to;
+    float *pos;
+    float32x4_t val[9];
+
+    for(int k=0; k<cout; k+=8){
+        src[0] = from + (k + 0) * cin * RS;
+        src[1] = from + (k + 1) * cin * RS;
+        src[2] = from + (k + 2) * cin * RS;
+        src[3] = from + (k + 3) * cin * RS;
+        src[4] = from + (k + 4) * cin * RS;
+        src[5] = from + (k + 5) * cin * RS;
+        src[6] = from + (k + 6) * cin * RS;
+        src[7] = from + (k + 7) * cin * RS;
+        for(int c=0; c<cin;c++){
+            int tc = c / CONV_C;
+            int ic = c % CONV_C;
+            dst = to + tc * CONV_C * cout * RS + k * CONV_C * RS + ic * RS * 8;
+            for(int rs=0; rs<RS; rs++){
+                *dst++ = *(src[0]++);
+                *dst++ = *(src[1]++);
+                *dst++ = *(src[2]++);
+                *dst++ = *(src[3]++);
+                *dst++ = *(src[4]++);
+                *dst++ = *(src[5]++);
+                *dst++ = *(src[6]++);
+                *dst++ = *(src[7]++);
+            
+            }
+        }
+    }
+}
+
 
 void packA_12(int channel, int height, int width, int csin, int hsin, float* from, float* to) {
 
@@ -73,13 +106,13 @@ void packA_12(int channel, int height, int width, int csin, int hsin, float* fro
                     src[2] += hsin;
 
                     vst1q_f32(dst,     val[0]);
-                    vst1q_f32(dst + 4, val[1]);
-                    vst1q_f32(dst + 8, val[2]);
-                    vst1q_f32(dst + 12,val[3]);
+                    vst1q_f32(dst + 4, val[3]);
+                    vst1q_f32(dst + 8, val[6]);
+                    vst1q_f32(dst + 12,val[1]);
                     vst1q_f32(dst + 16,val[4]);
-                    vst1q_f32(dst + 20,val[5]);
-                    vst1q_f32(dst + 24,val[6]);
-                    vst1q_f32(dst + 28,val[7]);
+                    vst1q_f32(dst + 20,val[7]);
+                    vst1q_f32(dst + 24,val[2]);
+                    vst1q_f32(dst + 28,val[5]);
                     vst1q_f32(dst + 32,val[8]);
                     dst += 36;
                 }
@@ -101,7 +134,7 @@ void MY_IM_GEMM(int cin, int cout, int hout, int wout,
     printf("\n-------\n");
     print_matrix(m, k, a, lda);
     printf("\n-------\n");
-    print_matrix(k, n, b, ldb);
+    print_matrix(cout, cin * 9, b, cin * 9);
     printf("\n-------\n");
 #endif
  
@@ -139,9 +172,9 @@ void MY_IM_GEMM(int cin, int cout, int hout, int wout,
 
                         // coninueous packA
                         
-//                        packA_12(ctile, H_UNROLL, microw, csin, hsin, a + cb * csin + (hb+hpos)*hsin + wb+wpos, sa + (wpos*H_UNROLL + hpos * wtile)*ctile*RS);
+                        packA_12(ctile, H_UNROLL, microw, csin, hsin, a + cb * csin + (hb+hpos)*hsin + wb+wpos, sa + (wpos*H_UNROLL + hpos * wtile)*ctile*RS);
 
-                        KERNEL_12x8(H_UNROLL, microw, ktile, ctile*RS, sa + (wpos*H_UNROLL + hpos * wtile)*ctile*RS, w_ptr, c + (hb+hpos)*wout + wb+wpos, wout, csout);
+                        kernel12x8(H_UNROLL, microw, ktile, ctile*RS, sa + (wpos*H_UNROLL + hpos * wtile)*ctile*RS, w_ptr, c + (hb+hpos)*wout + wb+wpos, wout, csout);
                     }
                 }
 
@@ -154,14 +187,14 @@ void MY_IM_GEMM(int cin, int cout, int hout, int wout,
                 //        min_n = (min_n / 2 + GEMM_UNROLL - 1) & ~(GEMM_UNROLL - 1);
                 //    }
 
-                //    KERNEL_12x8(min_m, min_n, min_k, sa, sb, c + ms * ldc + ns, ldc);
+                //    kernel12x8(min_m, min_n, min_k, sa, sb, c + ms * ldc + ns, ldc);
                 //}
             }
         }
     }
 }
 
-void kernel_12x8_v1(int hout, int wout, int cout, int crs, float* sa, float * sb, float* sc, int hsout, int csout) 
+void kernel12x8(int hout, int wout, int cout, int crs, float* sa, float * sb, float* sc, int hsout, int csout) 
 {
     assert(hout % 3 == 0 && wout % 4 == 0);
 
@@ -304,7 +337,8 @@ void kernel_12x8_v1(int hout, int wout, int cout, int crs, float* sa, float * sb
             c += hsout * 3 - wout;
         } //endh
         a = sa;
-        b += 8 * crs;
+        sb += 8 * crs;
+        b = sb;
     }// endj
 }
 

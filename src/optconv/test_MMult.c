@@ -11,6 +11,7 @@ void MY_IM_GEMM(int, int, int,int, float *, float *, float *);
 void copy_matrix(int, int, float *, int, float *, int );
 void random_matrix(int, int, float *, int, int);
 float compare_matrices( int, int, float *, int, float *, int );
+void packB_k8(int cin, int cout, float* from, float* to);
 
 double dclock();
 
@@ -18,8 +19,6 @@ int main(int argc, char**argv)
 {
   int 
     p, 
-    m, n, k,
-    lda, ldb, ldc, 
     rep;
 
   double 
@@ -28,7 +27,7 @@ int main(int argc, char**argv)
     diff;
 
   float 
-    *a, *b, *c, *cref, *cold;    
+    *a, *b, *c, *cref, *bpack;    
   
   printf( "\nSize, Gflops\n" );
     
@@ -50,20 +49,21 @@ int main(int argc, char**argv)
     /* Note: I create an extra column in A to make sure that
        prefetching beyond the matrix does not cause a segfault */
     a = ( float * ) malloc( hin * win * (cin+1) * sizeof( float ) );  
-    b = ( float * ) malloc( cin * cout * 10 * sizeof( float ) );
+    b = ( float * ) malloc( cin * cout * 9 * sizeof( float ) );
+    bpack = ( float * ) malloc( cin * cout * 10 * sizeof( float ) );
     c = ( float * ) malloc( hout * wout * cout * 2 * sizeof( float ) );
     cref = ( float * ) malloc( hout * wout * cout*2 * sizeof( float ) );
 
     /* Generate random matrices A, B, Cold */
-    random_matrix( cin, hin*win, a, hin*win , 0);
-    random_matrix( cout, cin * 9, b, cin * 9 , 0);
-
+    random_matrix( cin, hin*win, a, hin*win , 1);
+    random_matrix( cout, cin * 9, b, cin * 9 , 1);
+    packB_k8(cin, cout, b, bpack);
     ref_conv( cout, hout, wout, cin, a, b, cref);
 
     /* check output */
     for ( rep=0; rep<2; rep++ ){
 	  memset(c, 0, hout*wout*cout*sizeof(float));
-      MY_IM_GEMM( cin, cout, hout, wout, a,  b, c);
+      MY_IM_GEMM( cin, cout, hout, wout, a,  bpack, c);
     }
     if(compare)
         diff = compare_matrices( cout, hout*wout, c, hout*wout, cref, hout*wout );
@@ -72,10 +72,10 @@ int main(int argc, char**argv)
         diff = 0;
     }
 
-    MY_IM_GEMM( cin, cout, hout, wout, a,  b, c);
+    MY_IM_GEMM( cin, cout, hout, wout, a,  bpack, c);
     dtime = dclock();
     for ( rep=0; rep<NREPEATS; rep++ ){
-      MY_IM_GEMM( cin, cout, hout, wout, a,  b, c);
+      MY_IM_GEMM( cin, cout, hout, wout, a,  bpack, c);
     }
 
     dtime = dclock() - dtime;
