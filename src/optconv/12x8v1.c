@@ -20,8 +20,8 @@
 
 #define min(i, j) ((i) < (j) ? (i): (j))
 
-#define CONV_H    (3*8)  // GEMM_R
-#define CONV_W    (4*8)  // GEMM_R
+#define CONV_H    (3*4)  // GEMM_R
+#define CONV_W    (4*4)  // GEMM_R
 #define CONV_K    (256)  // GEMM_P
 #define CONV_C    (32)  // GEMM_Q
 #define RS        (9)  // GEMM_Q
@@ -132,18 +132,14 @@ void MY_IM_GEMM(int cin, int cout, int hout, int wout,
 ) {
 #ifdef DEBUG_PRINT_DATA
     printf("\n-------\n");
-    print_matrix(m, k, a, lda);
-    printf("\n-------\n");
     print_matrix(cout, cin * 9, b, cin * 9);
-    printf("\n-------\n");
 #endif
- 
-
     if(sa==NULL) 
         sa = fastMalloc(CONV_H * CONV_W * CONV_C * RS);
     //already padded
     const int pad = 1;
-    int htile, wtile, ctile; 
+    //c -> cin   k -> cout
+    int htile, wtile, ctile, ktile; 
     int hsin = wout + pad * 2;
     int csin = hsin * (hout + pad * 2);
     int csout = hout * wout;
@@ -155,43 +151,30 @@ void MY_IM_GEMM(int cin, int cout, int hout, int wout,
 
             for (int cb = 0; cb < cin; cb += CONV_C){
                 ctile = CONV_C <= cin-cb? CONV_C : cin-cb;
-                float *w_ptr = b + cb * cout * RS;
-                int ktile = CONV_K <= cout? CONV_K : cout;
+                for (int kb = 0; kb < cout; kb += CONV_K) {
+                    int ktile = CONV_K <= cout - kb? CONV_K : cout - kb;
+                    float *w_ptr = b + cb * cout * RS + kb * ctile * RS;
 
-                // micro kernel, split A Block to smaller Panel
-                for (int hpos=0; hpos<htile; hpos += H_UNROLL) {
-                    int microw;
-                    for (int wpos=0; wpos<wtile;wpos += W_UNROLL) {
-                        microw = wtile-wpos;
-                        //if(microw >= 2 * W_UNROLL) {
-                        //    microw = 2 * W_UNROLL;
-                        //} else
-						 if(microw > W_UNROLL) {
-                            microw = W_UNROLL;
-                        }
+                    // micro kernel, split A Block to smaller Panel
+                           // if(microw >= 4 * W_UNROLL) {
+                           //     microw = 4 * W_UNROLL;
+                           // }else if(microw >= 2 * W_UNROLL) {
+                           //     microw = 2 * W_UNROLL;
+                           // } else if(microw > W_UNROLL) {
+                           //     microw = W_UNROLL;
+                           // }
 
-                        // coninueous packA
-                        
-                        packA_12(ctile, H_UNROLL, microw, csin, hsin, a + cb * csin + (hb+hpos)*hsin + wb+wpos, sa + (wpos*H_UNROLL + hpos * wtile)*ctile*RS);
+                            // coninueous packA
+                            if(kb==0)                  
+                                packA_12(ctile, htile, wtile, csin, hsin, a + cb * csin + (hb)*hsin + wb, sa);
 
-                        kernel12x8(H_UNROLL, microw, ktile, ctile*RS, sa + (wpos*H_UNROLL + hpos * wtile)*ctile*RS, w_ptr, c + (hb+hpos)*wout + wb+wpos, wout, csout);
-                    }
-                }
+                            kernel12x8(htile, wtile, ktile, ctile*RS, sa, w_ptr, c + (hb)*wout + wb + kb * csout, wout, csout);
 
-                // the first B Block has been packed, proc the others 
-                //for (ns = min_n; ns < n; ns += min_n) {
-                //    min_n = n - ns;
-                //    if (min_n >= GEMM_N * 2) {
-                //        min_n = GEMM_N; 
-                //    } else if(min_n > GEMM_N) {
-                //        min_n = (min_n / 2 + GEMM_UNROLL - 1) & ~(GEMM_UNROLL - 1);
-                //    }
+                }//end k
 
-                //    kernel12x8(min_m, min_n, min_k, sa, sb, c + ms * ldc + ns, ldc);
-                //}
-            }
-        }
-    }
+            } // end c
+        } //end w
+    } //end h
 }
 
 void kernel12x8(int hout, int wout, int cout, int crs, float* sa, float * sb, float* sc, int hsout, int csout) 
@@ -264,7 +247,6 @@ void kernel12x8(int hout, int wout, int cout, int crs, float* sa, float * sb, fl
                 "   st1 {v31.4s}, [x9]             \n"
                 ".endm                              \n" 
                 "                                   \n"
-                //"   prfm pldl1keep, [%0]            \n"
                 //"   prfm pldl1keep, [%1]            \n"
                 "   ld1 {v0.4s}, [%0], #16          \n"
                 "   ld1 {v2.4s}, [%1], #16          \n"
@@ -283,30 +265,37 @@ void kernel12x8(int hout, int wout, int cout, int crs, float* sa, float * sb, fl
                 "   ld1 {v4.4s}, [%1], #16          \n"
                 "   fmla v13.4s, v2.4s, v1.s[1]     \n"
                 "   fmla v14.4s, v2.4s, v1.s[2]     \n"
+                "   prfm pldl1keep, [%0, #64]       \n"
                 "   fmla v15.4s, v2.4s, v1.s[3]     \n"
             
                 "   fmla v16.4s, v3.4s, v0.s[0]     \n"
                 "   ld1 {v2.4s}, [%1], #16          \n"
                 "   fmla v17.4s, v3.4s, v0.s[1]     \n"
                 "   fmla v18.4s, v3.4s, v0.s[2]     \n"
+                "   prfm pldl1keep, [%1, #64]       \n"
                 "   fmla v19.4s, v3.4s, v0.s[3]     \n"
+            
+                "   fmla v24.4s, v4.4s, v0.s[0]     \n"
+                "   prfm pldl1keep, [%0, #128]       \n"
+                "   fmla v25.4s, v4.4s, v0.s[1]     \n"
+                "   fmla v26.4s, v4.4s, v0.s[2]     \n"
+                "   prfm pldl1keep, [%1, #128]       \n"
+                "   fmla v27.4s, v4.4s, v0.s[3]     \n"
             
 
                 "   fmla v20.4s, v3.4s, v1.s[0]     \n"
+                "   ld1 {v0.4s}, [%0], #16          \n"
                 "   fmla v21.4s, v3.4s, v1.s[1]     \n"
                 "   fmla v22.4s, v3.4s, v1.s[2]     \n"
+                "   prfm pldl1keep, [%1, #192]      \n"
                 "   fmla v23.4s, v3.4s, v1.s[3]     \n"
                 "   subs x8, x8, #1                 \n"
             
-                "   fmla v24.4s, v4.4s, v0.s[0]     \n"
-                "   fmla v25.4s, v4.4s, v0.s[1]     \n"
-                "   fmla v26.4s, v4.4s, v0.s[2]     \n"
-                "   fmla v27.4s, v4.4s, v0.s[3]     \n"
-            
                 "   fmla v28.4s, v4.4s, v1.s[0]     \n"
-                "   ld1 {v0.4s}, [%0], #16          \n"
+                "   prfm pldl1keep, [%0, #192]       \n"
                 "   fmla v29.4s, v4.4s, v1.s[1]     \n"
                 "   fmla v30.4s, v4.4s, v1.s[2]     \n"
+                "   prfm pldl1keep, [%1, #256]       \n"
                 "   fmla v31.4s, v4.4s, v1.s[3]     \n"
                 "   bne run                         \n"
                 "SAVE12x8                            \n"

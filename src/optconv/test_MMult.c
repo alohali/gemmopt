@@ -29,20 +29,28 @@ int main(int argc, char**argv)
   float 
     *a, *b, *c, *cref, *bpack;    
   
-  printf( "\nSize, Gflops\n" );
+  printf( "\ncin,cout,h,w,Gflops\n" );
     
   int compare = 1;
   if(argc>1){
     compare = atoi(argv[1]);
   }
-//  for ( p=PFIRST; p<=PLAST; p+=PINC ){
+
+  int testcase[][4] = {
+      //cin cout h w
+     // {256, 512, 3*32, 4*32},
+      {64, 512, 3*16, 4*16},
+      {64, 64, 3*16, 4*16},
+      {32, 64, 3*32, 4*32},
+  };
+  for ( int tid=0; tid<sizeof(testcase)/sizeof(testcase[0]); tid++)
   {
-    int cin = 64;
-    int hout = 3*16;
+    int cin = testcase[tid][0];
+    int cout = testcase[tid][1];
+    int hout = testcase[tid][2];
     int hin  = hout + 2;
-    int wout = 4*16;
+    int wout = testcase[tid][3];
     int win  = wout + 2; 
-    int cout = 64;
     gflops = 2.0 * cin * cout * hout * wout * 9 * 1.0e-09;
 
     /* Allocate space for the matrices */
@@ -81,7 +89,7 @@ int main(int argc, char**argv)
     dtime = dclock() - dtime;
     dtime /= NREPEATS;
 
-    printf( "%d, %.3f\n", p, gflops / dtime);
+    printf( "%d, %d, %d, %d, %.3f, %.3f\n", cin, cout, hout, wout, dtime, gflops / dtime);
     fflush( stdout );
 
     free( a );
