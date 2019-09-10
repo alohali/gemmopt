@@ -1,5 +1,5 @@
 OLD  := MMult_4x4_13
-NEW  := 12x8v2
+NEW  := 12x8v3
 #NEW  := MMult_4x4_17
 
 #

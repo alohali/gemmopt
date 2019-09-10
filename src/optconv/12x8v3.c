@@ -23,7 +23,7 @@
 #define CONV_H    (3*4)  // GEMM_R
 #define CONV_W    (4*4)  // GEMM_R
 #define CONV_K    (256)  // GEMM_P
-#define MAX_K     (512)  // GEMM_P
+#define MAX_K     (2048)  // GEMM_P
 #define CONV_C    (32)  // GEMM_Q
 #define RS        (9)  // GEMM_Q
 #define R         (3)  // GEMM_Q
