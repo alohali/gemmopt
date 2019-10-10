@@ -36,14 +36,19 @@ void packB_k8(int cin, int cout, int8_t* from, int8_t* to) {
     int64_t *dst = (int64_t *)to;
     cin = cin/8;
     for(int o=0; o<cout;o+=4){
-        for(int i=0; i<cin; i++){
+        for(int i=0; i<cin/2; i++){
             dst[0] = src[o*cin];
-            dst[1] = src[(o+1)*cin];
-            dst[2] = src[(o+2)*cin];
-            dst[3] = src[(o+3)*cin];
-            dst += 4;
-            src++;
+            dst[1] = src[o*cin+1];
+            dst[2] = src[(o+1)*cin];
+            dst[3] = src[(o+1)*cin+1];
+            dst[4] = src[(o+2)*cin];
+            dst[5] = src[(o+2)*cin+1];
+            dst[6] = src[(o+3)*cin];
+            dst[7] = src[(o+3)*cin+1];
+            dst += 8;
+            src+=2;
         }
+        src -= cin;
     }
     
 }
@@ -59,13 +64,13 @@ void kernel4x4(int cin, int cout, int hout, int wout, int8_t* sa, int8_t * sb, i
             for(int j = 0; j < cout; j += 4) {
             	asm volatile (
 
-                "mov x8, %0\n"
-                "mov x14, %4\n"
                 "mov x10, %1\n"
+                "ld1 {v12.16b, v13.16b}, [x10], #32\n"
+                "mov x8, %0\n"
+                "mov x14, %2\n"
                 "add x11, x8, %3\n"
                 "add x12, x11, %3\n"
                 "add x13, x12, %3\n"
-                "ld1 {v12.16b, v13.16b}, [x10], #32\n"
                 "ld1 {v14.16b, v15.16b}, [x10], #32\n"
                 "ld1 {v8.16b}, [x8], #16\n"
                 "ld1 {v9.16b}, [x11], #16\n"
@@ -218,22 +223,23 @@ void kernel4x4(int cin, int cout, int hout, int wout, int8_t* sa, int8_t * sb, i
                  
                 "fmul v12.4s, v4.4s, v1.4s\n"
                 "fmul v13.4s, v5.4s, v1.4s\n"
-                "fmul v14.4s, v6.4s, v1.4s\n"
-                "fmul v15.4s, v7.4s, v1.4s\n"
                  
-                "fcvtzs v8.4s, v12.4s\n"
-                "fcvtzs v9.4s, v13.4s\n"
-                "fcvtzs v10.4s, v14.4s\n"
-                "fcvtzs v11.4s, v15.4s\n"
+                "fcvtns v8.4s, v12.4s\n"
+                "fcvtns v9.4s, v13.4s\n"
                  
                 "sqxtn v0.4h, v8.4s\n"
                 "sqxtn2 v0.8h, v9.4s\n"
-                "sqxtn v1.4h, v10.4s\n"
-                "sqxtn2 v1.8h, v11.4s\n"
                 "sqxtn v2.8b, v0.8h\n"
-                "sqxtn2 v2.16b, v1.8h\n"
                 "st1 {v2.s}[0], [x14], %4\n"
                 "st1 {v2.s}[1], [x14], %4\n"
+
+                "fmul v14.4s, v6.4s, v1.4s\n"
+                "fmul v15.4s, v7.4s, v1.4s\n"
+                "fcvtns v10.4s, v14.4s\n"
+                "fcvtns v11.4s, v15.4s\n"
+                "sqxtn v1.4h, v10.4s\n"
+                "sqxtn2 v1.8h, v11.4s\n"
+                "sqxtn2 v2.16b, v1.8h\n"
                 "st1 {v2.s}[2], [x14], %4\n"
                 "st1 {v2.s}[3], [x14]\n"                
                 : "=r"(a),
@@ -252,7 +258,7 @@ void kernel4x4(int cin, int cout, int hout, int wout, int8_t* sa, int8_t * sb, i
                   "5"(cdiv16),
                   "6"(scale),
                   "7"(bias)
-                : "memory", "cc", "x8", "x9","x11","x12","x13","x14", 
+                : "memory", "cc", "x8", "x9","x10","x11","x12","x13","x14", 
                 "v0", "v1", "v2", "v3", "v4","v5","v6","v7", 
                 "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15",  
                 "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23", 
@@ -263,8 +269,10 @@ void kernel4x4(int cin, int cout, int hout, int wout, int8_t* sa, int8_t * sb, i
                 b += 4 * cin;
             } // endo
             b = sb;
-            c += wout * 3;
+            c += cout * 3;
             a += cin * 4;
+            scale -= cout;
+            bias -= cout;
         } //endw
     }// endh
 }

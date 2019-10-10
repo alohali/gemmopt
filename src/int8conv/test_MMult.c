@@ -40,11 +40,14 @@ int main(int argc, char**argv)
       //cin cout h w
      // {256, 512, 3*32, 4*32},
 //      {64, 64, 3*16, 4*16},
-      {32, 64, 3*32, 4*32},
-      {1024, 512, 3*16, 4*12},
-      {2048, 2048, 3*16, 4*12},
-      {64, 128, 3*16, 4*16},
-      {512, 64, 3*32, 4*32},
+      {64, 64, 128, 128},
+      {256, 256, 64, 64},
+      {256, 256, 28, 28},
+      {512, 512, 12, 16},
+     // {1024, 512, 3*16, 4*12},
+     // {2048, 2048, 3*16, 4*12},
+     // {64, 128, 3*16, 4*16},
+      ///{512, 64, 3*32, 4*32},
   };
   for ( int tid=0; tid<sizeof(testcase)/sizeof(testcase[0]); tid++)
   {
@@ -54,7 +57,7 @@ int main(int argc, char**argv)
     int hin  = hout;
     int wout = testcase[tid][3];
     int win  = wout; 
-    gflops = 2.0 * cin * cout * hout * wout * 9 * 1.0e-09;
+    gflops = 2.0 * cin * cout * hout * wout * 1.0e-09;
 
     /* Allocate space for the matrices */
     /* Note: I create an extra column in A to make sure that
@@ -69,7 +72,8 @@ int main(int argc, char**argv)
 
     memset(bias, 0, cout * sizeof(int32_t));
     for(int si=0;si<cout; si++){
-        scale[si] = 1;
+        scale[si] = (float)(rand() % 64)/255.0;
+        bias[si] = (rand() % 16);
     }
 
     /* Generate random matrices A, B, Cold */
@@ -84,7 +88,7 @@ int main(int argc, char**argv)
       kernel4x4( cin, cout, hout, wout, a,  bpack, c, scale, bias);
     }
     if(compare)
-        diff = compare_matrices( cout, hout*wout, c, hout*wout, cref, hout*wout );
+        diff = compare_matrices( hout*wout,cout, c, cout, cref, cout );
     if(diff > 0.05f || diff < -0.05f){
         compare = 0;
         diff = 0;
@@ -99,7 +103,7 @@ int main(int argc, char**argv)
     dtime = dclock() - dtime;
     dtime /= NREPEATS;
 
-    printf( "%d, %d, %d, %d, %.3f, %.3f\n", cin, cout, hout, wout, dtime, gflops / dtime);
+    printf( "%d, %d, %d, %d, %.3f, %.3f\n", cin, cout, hout, wout, dtime*1000, gflops / dtime);
     fflush( stdout );
 
     free( a );
