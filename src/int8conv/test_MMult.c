@@ -65,7 +65,7 @@ int main(int argc, char**argv)
        prefetching beyond the matrix does not cause a segfault */
     a = ( int8_t * ) malloc( hin * win * (cin+1) * sizeof( int8_t ) );  
     b = ( int8_t * ) malloc( cin * cout  * sizeof( int8_t ) );
-    bpack = ( int8_t * ) malloc( cin * cout * 31 * sizeof( int8_t ) );
+    bpack = ( int8_t * ) malloc( cin * cout * NREPEATS * sizeof( int8_t ) );
     c = ( int8_t * ) malloc( hout * wout * cout * sizeof( int8_t ) );
     cref = ( int8_t * ) malloc( hout * wout * cout * sizeof( int8_t ) );
     scale = (float *)malloc(cout * sizeof(float));
@@ -98,7 +98,7 @@ int main(int argc, char**argv)
     kernel4x4( cin, cout, hout, wout, a,  b, c, scale, bias);
     dtime = dclock();
     for ( rep=0; rep<NREPEATS; rep++ ){
-      kernel4x4( cin, cout, hout, wout, a,  bpack + rep % 31 * cin * cout, c, scale, bias);
+      kernel4x4( cin, cout, hout, wout, a,  bpack + rep * cin * cout, c, scale, bias);
     }
 
     dtime = dclock() - dtime;
