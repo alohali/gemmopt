@@ -41,7 +41,8 @@ int main(int argc, char**argv)
      // {256, 512, 3*32, 4*32},
 //      {64, 64, 3*16, 4*16},
       {64, 64, 128, 128},
-      {256, 256, 64, 64},
+      {128, 128, 56, 56},
+      {128, 256, 28, 28},
       {256, 256, 28, 28},
       {512, 512, 12, 16},
      // {1024, 512, 3*16, 4*12},
@@ -64,7 +65,7 @@ int main(int argc, char**argv)
        prefetching beyond the matrix does not cause a segfault */
     a = ( int8_t * ) malloc( hin * win * (cin+1) * sizeof( int8_t ) );  
     b = ( int8_t * ) malloc( cin * cout  * sizeof( int8_t ) );
-    bpack = ( int8_t * ) malloc( cin * cout * 10 * sizeof( int8_t ) );
+    bpack = ( int8_t * ) malloc( cin * cout * 31 * sizeof( int8_t ) );
     c = ( int8_t * ) malloc( hout * wout * cout * sizeof( int8_t ) );
     cref = ( int8_t * ) malloc( hout * wout * cout * sizeof( int8_t ) );
     scale = (float *)malloc(cout * sizeof(float));
@@ -94,10 +95,10 @@ int main(int argc, char**argv)
         diff = 0;
     }
 
-    kernel4x4( cin, cout, hout, wout, a,  bpack, c, scale, bias);
+    kernel4x4( cin, cout, hout, wout, a,  b, c, scale, bias);
     dtime = dclock();
     for ( rep=0; rep<NREPEATS; rep++ ){
-      kernel4x4( cin, cout, hout, wout, a,  bpack, c, scale, bias);
+      kernel4x4( cin, cout, hout, wout, a,  bpack + rep % 31 * cin * cout, c, scale, bias);
     }
 
     dtime = dclock() - dtime;
