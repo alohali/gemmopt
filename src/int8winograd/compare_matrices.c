@@ -27,8 +27,6 @@ int8_t compare_matrices( int m, int n, int8_t *a, int lda, int8_t *b, int ldb )
       }
     }
   }
-  if(max_diff==0)
-      printf("check done\n");
 
   return max_diff;
 }

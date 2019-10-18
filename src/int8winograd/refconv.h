@@ -13,8 +13,6 @@ static inline int8_t int32ToInt8(int data, int bias, float scale) {
     float value = (float)(data + bias) * scale;
     value       = value>-128.0f?value:-128.0f;
     value       = value<127.0f ?value:127.0f;
-    if(roundf(value)==127)
-        printf("%d %f\n", data, value);
     return (int8_t)(vcvtns_s32_f32(value));
 }
 

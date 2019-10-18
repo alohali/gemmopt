@@ -7,8 +7,8 @@ NEW  := winograd22
 
 CC         := gcc
 LINKER     := $(CC)
-CFLAGS     := -O0 -g -Wall
-#CFLAGS     := -Wall -O2 -flax-vector-conversions  
+#CFLAGS     := -O0 -g -Wall
+CFLAGS     := -Wall -O2 -flax-vector-conversions  
 LDFLAGS    := -lm
 
 UTIL       := copy_matrix.o \

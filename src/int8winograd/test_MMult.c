@@ -40,9 +40,17 @@ int main(int argc, char**argv)
       //cin cout h w
      // {256, 512, 3*32, 4*32},
 //      {64, 64, 3*16, 4*16},
-     {16, 4, 4, 4},
-     // {64, 64, 128, 128},
-     // {128, 128, 56, 56},
+    // {16, 4, 4, 4},
+    // {16, 4, 64, 64},
+    {64, 64, 128, 128},
+    {64, 64, 64, 64},
+    {64, 64, 32, 32},
+    {64, 64, 16, 16},
+    // {32, 4, 4, 4},
+    {32, 32, 128, 128},
+    {32, 32, 64, 64},
+    {32, 32, 32, 32},
+    {32, 32, 16, 16},
      // {128, 256, 28, 28},
      // {256, 256, 28, 28},
      // {512, 512, 12, 16},
@@ -75,8 +83,8 @@ int main(int argc, char**argv)
 
     memset(bias, 0, cout * sizeof(int32_t));
     for(int si=0;si<cout; si++){
-        scale[si] = 0.05;//(float)(rand() % 64)/255.0;
-        bias[si] = 0;//(rand() % 16);
+        scale[si] = (float)(rand() % 64)/255.0;
+        bias[si] = (rand() % 16);
     }
 
     /* Generate random matrices A, B, Cold */
@@ -100,9 +108,8 @@ int main(int argc, char**argv)
         compare = 0;
         diff = 0;
     }
-    return 0;
     for( rep=1; rep<NREPEATS; rep++)
-        memcpy(bpack+cin*cout*16*rep, bpack, cin*cout*16*rep);
+        memcpy(bpack+cin*cout*16*rep, bpack, cin*cout*16);
     kernel4x4( cin,hin, win, cout, hout, wout, a,  bpack, c, scale, bias);
     dtime = dclock();
     for ( rep=0; rep<NREPEATS; rep++ ){

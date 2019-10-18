@@ -151,11 +151,6 @@ void dst_convert(int32_t *src, int8_t *dst, int ws, int hs,float *scale, int32_t
     rmid[0] = vqmovn_s16( vqmovn_high_s32(vqmovn_s32(v[0][0]), v[0][1]));
     rmid[1] = vqmovn_s16( vqmovn_high_s32(vqmovn_s32(v[1][0]), v[1][1]));
     vst1_lane_s32(dst_wr, vreinterpret_s32_s8(rmid[0]), 0);//*(int32_t*)&rmid[0];
-#ifdef DEBUG_PRINT_DATA
-    if(rmid[0][3]==119){
-        printf("%d %f\n", v[0][0][3], (vcvtq_f32_s32(vmid[0][0] + vmid[0][1] + vmid[0][2] + b4) * s4)[3]);
-    }
-#endif
     vst1_lane_s32(dst_wr + ws/4, vreinterpret_s32_s8(rmid[0]), 1);//*(int32_t*)&rmid[0];
     vst1_lane_s32(dst_wr + hs/4, vreinterpret_s32_s8(rmid[1]), 0);//*(int32_t*)&rmid[0];
     vst1_lane_s32(dst_wr + hs/4 + ws/4, vreinterpret_s32_s8(rmid[1]), 1);//*(int32_t*)&rmid[0];
