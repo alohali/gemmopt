@@ -80,8 +80,8 @@ int main(int argc, char**argv)
     }
 
     /* Generate random matrices A, B, Cold */
-    random_matrix( hin*win,cin, a, cin , 31);
-    random_matrix( cout*cin, kernel*kernel, b, kernel*kernel, 17);
+    random_matrix( hin*win,cin, a, cin , 1);
+    random_matrix( cout*cin, kernel*kernel, b, kernel*kernel, 1);
     convi8_ref(a, cref, b, bias, scale,   hout, wout, cin, cout, hin, win, kernel, 0, 1);
 
     for(int si=0;si<cout; si++){

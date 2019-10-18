@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 /* Block sizes */
 #define DEBUG_PACK_SHAPE
@@ -55,7 +56,7 @@ void weight_convert(const int8_t* src, int8_t* dst, int cin, int cout) {
 
             for(int r=0; r<4; r++){
                 for(int s=0; s<4; s++){
-                    win_w[r][s] = g[r][0]*mid[s][0] + g[r][1]*mid[s][1] + g[r][2]*mid[s][2];
+                    win_w[r][s] = g[s][0]*mid[r][0] + g[s][1]*mid[r][1] + g[s][2]*mid[r][2];
                     //o/4 win16 i/16 o4 i16
                     int winrs = r*4+s;
                     dst[oo*16*cin*4+winrs*cin*4+io*16*4+oi*16+ii] = win_w[r][s];
@@ -63,7 +64,9 @@ void weight_convert(const int8_t* src, int8_t* dst, int cin, int cout) {
             }
         }
     }
-    //print_matrix(cin*cout/4,64,dst, 64 );
+#ifdef DEBUG_PRINT_DATA
+    print_matrix(cin*cout/4,64,dst, 64 );
+#endif
 }
 
 void winfeature_convert(const int8_t *src, int8_t *dst, int width, int height, int channel){
@@ -148,6 +151,11 @@ void dst_convert(int32_t *src, int8_t *dst, int ws, int hs,float *scale, int32_t
     rmid[0] = vqmovn_s16( vqmovn_high_s32(vqmovn_s32(v[0][0]), v[0][1]));
     rmid[1] = vqmovn_s16( vqmovn_high_s32(vqmovn_s32(v[1][0]), v[1][1]));
     vst1_lane_s32(dst_wr, vreinterpret_s32_s8(rmid[0]), 0);//*(int32_t*)&rmid[0];
+#ifdef DEBUG_PRINT_DATA
+    if(rmid[0][3]==119){
+        printf("%d %f\n", v[0][0][3], (vcvtq_f32_s32(vmid[0][0] + vmid[0][1] + vmid[0][2] + b4) * s4)[3]);
+    }
+#endif
     vst1_lane_s32(dst_wr + ws/4, vreinterpret_s32_s8(rmid[0]), 1);//*(int32_t*)&rmid[0];
     vst1_lane_s32(dst_wr + hs/4, vreinterpret_s32_s8(rmid[1]), 0);//*(int32_t*)&rmid[0];
     vst1_lane_s32(dst_wr + hs/4 + ws/4, vreinterpret_s32_s8(rmid[1]), 1);//*(int32_t*)&rmid[0];
