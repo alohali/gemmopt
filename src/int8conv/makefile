@@ -7,7 +7,7 @@ NEW  := 4x4i8v1
 
 CC         := gcc
 LINKER     := $(CC)
-#CFLAGS     := -O2 -g -Wall
+#CFLAGS     :=  -g -Wall
 CFLAGS     := -Wall -O2 -flax-vector-conversions  
 LDFLAGS    := -lm
 
