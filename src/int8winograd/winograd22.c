@@ -14,21 +14,10 @@
 #define DEBUG_PRINT_DATA
 #undef DEBUG_PRINT_DATA
 
-#define A(i,j) a[ (i)*lda + (j) ]
-#define B(i,j) b[ (i)*ldb + (j) ]
-#define C(i,j) c[ (i)*ldc + (j) ]
+
 
 #define min(i, j) ((i) < (j) ? (i): (j))
-
-#define CONV_H    (3*4)  // GEMM_R
-#define CONV_W    (4*4)  // GEMM_R
-#define CONV_K    (256)  // GEMM_P
-#define CONV_C    (32)  // GEMM_Q
-#define RS        (9)  // GEMM_Q
-#define R         (3)  // GEMM_Q
-#define W_UNROLL (4)
-#define H_UNROLL (3)
-
+#define max(i, j) ((i) > (j) ? (i): (j))
 //oirs to winograd domain o/4 win16 i/16 o4 i16
 void weight_convert(const int8_t* src, int8_t* dst, int cin, int cout) {
     
@@ -69,7 +58,7 @@ void weight_convert(const int8_t* src, int8_t* dst, int cin, int cout) {
 #endif
 }
 
-void winfeature_convert(const int8_t *src, int8_t *dst, int width, int height, int channel){
+void winfeature_convert(const int8_t *src, int8_t *dst, int width, int channel){
     for(int c=0; c<channel; c+=16){
         int8x16_t v[4][4];
         for(int h=0; h<4; h++){
@@ -158,21 +147,47 @@ void dst_convert(int32_t *src, int8_t *dst, int ws, int hs,float *scale, int32_t
 
 
 int8_t  *win_midbuffer = NULL;
+int8_t  *src_midbuffer = NULL;
 int32_t *dst_midbuffer = NULL;
-void kernel4x4(int cin, int hin, int win, int cout, int hout, int wout, int8_t* sa, int8_t * sb, int8_t* sc, float *scale, int32_t *bias) 
+void kernel4x4(int cin, int hin, int win, int cout, int hout, 
+                int wout, int8_t* sa, int8_t * sb, int8_t* sc, float *scale, 
+                int32_t *bias, int pad) 
 {
     int8_t *restrict b = sb, *restrict c = sc;
     int cdiv16 = cin/16;
     if(!win_midbuffer){
         win_midbuffer = (int8_t *)malloc(1024 * 32);
+        src_midbuffer = (int8_t *)malloc(1024 * 32);
         dst_midbuffer = (int32_t *)malloc(1024*2);
     }
 
     for(int h = 0; h < hout; h += 4) {
         for(int w = 0; w < wout; w += 4) {
-            for(int ht=0; ht<2; ht++)
-                for(int wt=0; wt<2; wt++)
-                    winfeature_convert(sa + (h+ht*2)*cin*win + (w+wt*2)*cin, win_midbuffer+(ht*2+wt)*16, win, hin, cin);
+            for(int ht=0; ht<2; ht++){
+                for(int wt=0; wt<2; wt++){
+                    int srch = h + ht * 2 - pad;
+                    int srcw = w + wt * 2 - pad;
+                    int8_t *apos = sa + srch*cin*win + srcw*cin;
+                    if(srch<0 || srcw<0 || srch+4>hin || srcw+4>win){
+                        memset(src_midbuffer, 0, cin * 16);
+
+                        int sy    = max(0, srch) - srch;
+                        int ey    = min(srch + 4, hin) - srch;
+                        int sx    = max(0, srcw) - srcw;
+                        int ex    = min(srcw + 4, win) - srcw;
+                        int count = cin * (ex - sx);
+                        
+                        for(int yy=sy; yy<ey; yy++){
+                            int8_t* src_yy = apos + sx * cin + yy * cin * win;
+                            int8_t* dst_yy = src_midbuffer + yy * cin * 4 + sx * cin;
+                            memcpy(dst_yy, src_yy, count);
+                        }
+                        winfeature_convert(src_midbuffer, win_midbuffer+(ht*2+wt)*16, 4, cin);
+                    }else{
+                        winfeature_convert(apos, win_midbuffer+(ht*2+wt)*16, win, cin);
+                    }
+                }
+            }
 #ifdef DEBUG_PRINT_DATA
             print_matrix(16*4,cin, win_midbuffer, cin);
 #endif

@@ -40,8 +40,8 @@ int main(int argc, char**argv)
       //cin cout h w
      // {256, 512, 3*32, 4*32},
 //      {64, 64, 3*16, 4*16},
-    // {16, 4, 4, 4},
-    // {16, 4, 64, 64},
+    {16, 4, 4, 4},
+    // // {16, 4, 64, 64},
     {64, 64, 128, 128},
     {64, 64, 64, 64},
     {64, 64, 32, 32},
@@ -64,10 +64,11 @@ int main(int argc, char**argv)
     int cin = testcase[tid][0];
     int cout = testcase[tid][1];
     int hout = testcase[tid][2];
-    int hin  = hout + 2;
+    int hin  = hout;
     int wout = testcase[tid][3];
-    int win  = wout + 2; 
+    int win  = wout; 
     int kernel = 3;
+    int pad = 1;
     gflops = 2.0 * cin * cout * hout * wout * kernel * kernel * 1.0e-09;
 
     /* Allocate space for the matrices */
@@ -90,7 +91,7 @@ int main(int argc, char**argv)
     /* Generate random matrices A, B, Cold */
     random_matrix( hin*win,cin, a, cin , 1);
     random_matrix( cout*cin, kernel*kernel, b, kernel*kernel, 1);
-    convi8_ref(a, cref, b, bias, scale,   hout, wout, cin, cout, hin, win, kernel, 0, 1);
+    convi8_ref(a, cref, b, bias, scale,   hout, wout, cin, cout, hin, win, kernel, 1, 1);
 
     for(int si=0;si<cout; si++){
         scale[si] = scale[si] / 4.0;
@@ -100,7 +101,7 @@ int main(int argc, char**argv)
     /* check output */
     for ( rep=0; rep<2; rep++ ){
 	  memset(c, 0, hout*wout*cout*sizeof(int8_t));
-      kernel4x4( cin, hin, win, cout, hout, wout, a,  bpack, c, scale, bias);
+      kernel4x4( cin, hin, win, cout, hout, wout, a,  bpack, c, scale, bias, pad);
     }
     if(compare)
         diff = compare_matrices( hout*wout,cout, c, cout, cref, cout );
@@ -110,10 +111,10 @@ int main(int argc, char**argv)
     }
     for( rep=1; rep<NREPEATS; rep++)
         memcpy(bpack+cin*cout*16*rep, bpack, cin*cout*16);
-    kernel4x4( cin,hin, win, cout, hout, wout, a,  bpack, c, scale, bias);
+    kernel4x4( cin,hin, win, cout, hout, wout, a,  bpack, c, scale, bias, pad);
     dtime = dclock();
     for ( rep=0; rep<NREPEATS; rep++ ){
-      kernel4x4( cin,hin, win, cout, hout, wout, a,  bpack + rep * cin * cout, c, scale, bias);
+      kernel4x4( cin,hin, win, cout, hout, wout, a,  bpack + rep * cin * cout, c, scale, bias, pad);
     }
 
     dtime = dclock() - dtime;
