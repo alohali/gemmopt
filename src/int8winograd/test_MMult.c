@@ -40,8 +40,10 @@ int main(int argc, char**argv)
       //cin cout h w
      // {256, 512, 3*32, 4*32},
 //      {64, 64, 3*16, 4*16},
+    {8, 4, 8, 8},
     {16, 4, 4, 4},
     // // {16, 4, 64, 64},
+    {24, 24, 128, 128},
     {64, 64, 128, 128},
     {64, 64, 64, 64},
     {64, 64, 32, 32},
@@ -82,16 +84,22 @@ int main(int argc, char**argv)
     scale = (float *)malloc(cout * sizeof(float));
     bias  = (int32_t *)malloc(cout * sizeof(int32_t));
 
+    int random = 1;
     memset(bias, 0, cout * sizeof(int32_t));
     for(int si=0;si<cout; si++){
-        scale[si] = (float)(rand() % 64)/255.0;
-        bias[si] = (rand() % 16);
+        if(random==1){
+            scale[si] = (float)(rand() % 64)/255.0;
+            bias[si] = (rand() % 16);
+        }else{
+            scale[si] = 1;
+            bias[si] = 0;
+        }
     }
 
     /* Generate random matrices A, B, Cold */
-    random_matrix( hin*win,cin, a, cin , 1);
-    random_matrix( cout*cin, kernel*kernel, b, kernel*kernel, 1);
-    convi8_ref(a, cref, b, bias, scale,   hout, wout, cin, cout, hin, win, kernel, 1, 1);
+    random_matrix( hin*win,cin, a, cin , random);
+    random_matrix( cout*cin, kernel*kernel, b, kernel*kernel, random);
+    convi8_ref(a, cref, b, bias, scale,   hout, wout, cin, cout, hin, win, kernel, pad, 1);
 
     for(int si=0;si<cout; si++){
         scale[si] = scale[si] / 4.0;
@@ -100,7 +108,7 @@ int main(int argc, char**argv)
     weight_convert(b, bpack, cin, cout);
     /* check output */
     for ( rep=0; rep<2; rep++ ){
-	  memset(c, 0, hout*wout*cout*sizeof(int8_t));
+	    memset(c, 0, hout*wout*cout*sizeof(int8_t));
       kernel4x4( cin, hin, win, cout, hout, wout, a,  bpack, c, scale, bias, pad);
     }
     if(compare)

@@ -20,35 +20,41 @@
 #define max(i, j) ((i) > (j) ? (i): (j))
 //oirs to winograd domain o/4 win16 i/16 o4 i16
 void weight_convert(const int8_t* src, int8_t* dst, int cin, int cout) {
-    
+    int cin16 = (cin + 8) / 16 * 16;
     int8_t w[3][3];
     int8_t mid[4][3];
     int8_t win_w[4][4];
     int8_t g[4][3] = {{2, 0, 0}, {1,1,1}, {1,-1,1}, {0,0,2}};
     for(int o=0; o<cout; o++){
-        for(int i=0; i<cin; i++){
+        for(int i=0; i<cin16; i++){
+            if(i<cin) {
+                //oirs
+                for(int r=0; r<3; r++){
+                    for(int s=0; s<3; s++){
+                        w[r][s] = src[o*cin*9 + i*9 + r*3 + s];
+                    }
+                }
+                for(int r=0; r<4; r++){
+                    for(int s=0; s<3; s++){
+                        mid[r][s] = g[r][0]*w[0][s] + g[r][1]*w[1][s] + g[r][2]*w[2][s];
+                    }
+                }
+            }
+
             int ii=i%16;
             int io=i/16;
             int oi=o%4;
             int oo=o/4;
-            //oirs
-            for(int r=0; r<3; r++){
-                for(int s=0; s<3; s++){
-                    w[r][s] = src[o*cin*9 + i*9 + r*3 + s];
-                }
-            }
-            for(int r=0; r<4; r++){
-                for(int s=0; s<3; s++){
-                    mid[r][s] = g[r][0]*w[0][s] + g[r][1]*w[1][s] + g[r][2]*w[2][s];
-                }
-            }
-
             for(int r=0; r<4; r++){
                 for(int s=0; s<4; s++){
-                    win_w[r][s] = g[s][0]*mid[r][0] + g[s][1]*mid[r][1] + g[s][2]*mid[r][2];
                     //o/4 win16 i/16 o4 i16
                     int winrs = r*4+s;
-                    dst[oo*16*cin*4+winrs*cin*4+io*16*4+oi*16+ii] = win_w[r][s];
+                    if(i<cin) {
+                        win_w[r][s] = g[s][0]*mid[r][0] + g[s][1]*mid[r][1] + g[s][2]*mid[r][2];
+                        dst[oo*16*cin16*4+winrs*cin16*4+io*16*4+oi*16+ii] = win_w[r][s];
+                    }else {
+                        dst[oo*16*cin16*4+winrs*cin16*4+io*16*4+oi*16+ii] = 0;
+                    }
                 }
             }
         }
@@ -59,7 +65,9 @@ void weight_convert(const int8_t* src, int8_t* dst, int cin, int cout) {
 }
 
 void winfeature_convert(const int8_t *src, int8_t *dst, int width, int channel){
-    for(int c=0; c<channel; c+=16){
+    int cstride = (channel+8)/16*16;
+    int c=0;
+    for(; c<channel-8; c+=16){
         int8x16_t v[4][4];
         for(int h=0; h<4; h++){
             for(int w=0; w<4; w++){
@@ -85,25 +93,88 @@ void winfeature_convert(const int8_t *src, int8_t *dst, int width, int channel){
         mid[3][3] = v[3][3] - v[1][3];
         //save to h4 w4 c/16 t4 c16
         //h0w4
-        vst1q_s8(dst + 0*channel*4 + c*4 + 0*channel*4*4, mid[0][0]-mid[0][2]);
-        vst1q_s8(dst + 1*channel*4 + c*4 + 0*channel*4*4, mid[0][1]+mid[0][2]);
-        vst1q_s8(dst + 2*channel*4 + c*4 + 0*channel*4*4, mid[0][2]-mid[0][1]);
-        vst1q_s8(dst + 3*channel*4 + c*4 + 0*channel*4*4, mid[0][3]-mid[0][1]);
+        vst1q_s8(dst + 0*cstride*4 + c*4 + 0*cstride*4*4, mid[0][0]-mid[0][2]);
+        vst1q_s8(dst + 1*cstride*4 + c*4 + 0*cstride*4*4, mid[0][1]+mid[0][2]);
+        vst1q_s8(dst + 2*cstride*4 + c*4 + 0*cstride*4*4, mid[0][2]-mid[0][1]);
+        vst1q_s8(dst + 3*cstride*4 + c*4 + 0*cstride*4*4, mid[0][3]-mid[0][1]);
         //h1w4
-        vst1q_s8(dst + 0*channel*4 + c*4 + 1*channel*4*4, mid[1][0]-mid[1][2]);
-        vst1q_s8(dst + 1*channel*4 + c*4 + 1*channel*4*4, mid[1][1]+mid[1][2]);
-        vst1q_s8(dst + 2*channel*4 + c*4 + 1*channel*4*4, mid[1][2]-mid[1][1]);
-        vst1q_s8(dst + 3*channel*4 + c*4 + 1*channel*4*4, mid[1][3]-mid[1][1]);
+        vst1q_s8(dst + 0*cstride*4 + c*4 + 1*cstride*4*4, mid[1][0]-mid[1][2]);
+        vst1q_s8(dst + 1*cstride*4 + c*4 + 1*cstride*4*4, mid[1][1]+mid[1][2]);
+        vst1q_s8(dst + 2*cstride*4 + c*4 + 1*cstride*4*4, mid[1][2]-mid[1][1]);
+        vst1q_s8(dst + 3*cstride*4 + c*4 + 1*cstride*4*4, mid[1][3]-mid[1][1]);
 
-        vst1q_s8(dst + 0*channel*4 + c*4 + 2*channel*4*4, mid[2][0]-mid[2][2]);
-        vst1q_s8(dst + 1*channel*4 + c*4 + 2*channel*4*4, mid[2][1]+mid[2][2]);
-        vst1q_s8(dst + 2*channel*4 + c*4 + 2*channel*4*4, mid[2][2]-mid[2][1]);
-        vst1q_s8(dst + 3*channel*4 + c*4 + 2*channel*4*4, mid[2][3]-mid[2][1]);
+        vst1q_s8(dst + 0*cstride*4 + c*4 + 2*cstride*4*4, mid[2][0]-mid[2][2]);
+        vst1q_s8(dst + 1*cstride*4 + c*4 + 2*cstride*4*4, mid[2][1]+mid[2][2]);
+        vst1q_s8(dst + 2*cstride*4 + c*4 + 2*cstride*4*4, mid[2][2]-mid[2][1]);
+        vst1q_s8(dst + 3*cstride*4 + c*4 + 2*cstride*4*4, mid[2][3]-mid[2][1]);
 
-        vst1q_s8(dst + 0*channel*4 + c*4 + 3*channel*4*4, mid[3][0]-mid[3][2]);
-        vst1q_s8(dst + 1*channel*4 + c*4 + 3*channel*4*4, mid[3][1]+mid[3][2]);
-        vst1q_s8(dst + 2*channel*4 + c*4 + 3*channel*4*4, mid[3][2]-mid[3][1]);
-        vst1q_s8(dst + 3*channel*4 + c*4 + 3*channel*4*4, mid[3][3]-mid[3][1]);
+        vst1q_s8(dst + 0*cstride*4 + c*4 + 3*cstride*4*4, mid[3][0]-mid[3][2]);
+        vst1q_s8(dst + 1*cstride*4 + c*4 + 3*cstride*4*4, mid[3][1]+mid[3][2]);
+        vst1q_s8(dst + 2*cstride*4 + c*4 + 3*cstride*4*4, mid[3][2]-mid[3][1]);
+        vst1q_s8(dst + 3*cstride*4 + c*4 + 3*cstride*4*4, mid[3][3]-mid[3][1]);
+    }
+    if(channel!=cstride){
+        int8x8_t v[4][4];
+        for(int h=0; h<4; h++){
+            for(int w=0; w<4; w++){
+                v[h][w] = vld1_s8(src+c + w * channel + h * width * channel);
+            }
+        }
+        int8x8_t mid[4][4];
+        mid[0][0] = v[0][0] - v[2][0];
+        mid[0][1] = v[0][1] - v[2][1];
+        mid[0][2] = v[0][2] - v[2][2];
+        mid[0][3] = v[0][3] - v[2][3];
+        mid[1][0] = v[1][0] + v[2][0];
+        mid[1][1] = v[1][1] + v[2][1];
+        mid[1][2] = v[1][2] + v[2][2];
+        mid[1][3] = v[1][3] + v[2][3];
+        mid[2][0] = v[2][0] - v[1][0];
+        mid[2][1] = v[2][1] - v[1][1];
+        mid[2][2] = v[2][2] - v[1][2];
+        mid[2][3] = v[2][3] - v[1][3];
+        mid[3][0] = v[3][0] - v[1][0];
+        mid[3][1] = v[3][1] - v[1][1];
+        mid[3][2] = v[3][2] - v[1][2];
+        mid[3][3] = v[3][3] - v[1][3];
+        v[0][0] = vdup_n_s8(0);
+        //save to h4 w4 c/16 t4 c16
+        //h0w4
+        vst1_s8(dst + 0*cstride*4 + c*4 + 0*cstride*4*4, mid[0][0]-mid[0][2]);
+        vst1_s8(dst + 1*cstride*4 + c*4 + 0*cstride*4*4, mid[0][1]+mid[0][2]);
+        vst1_s8(dst + 2*cstride*4 + c*4 + 0*cstride*4*4, mid[0][2]-mid[0][1]);
+        vst1_s8(dst + 3*cstride*4 + c*4 + 0*cstride*4*4, mid[0][3]-mid[0][1]);
+        vst1_s8(dst + 0*cstride*4 + c*4 + 0*cstride*4*4+8, v[0][0]);
+        vst1_s8(dst + 1*cstride*4 + c*4 + 0*cstride*4*4+8, v[0][0]);
+        vst1_s8(dst + 2*cstride*4 + c*4 + 0*cstride*4*4+8, v[0][0]);
+        vst1_s8(dst + 3*cstride*4 + c*4 + 0*cstride*4*4+8, v[0][0]);
+        //h14
+        vst1_s8(dst + 0*cstride*4 + c*4 + 1*cstride*4*4, mid[1][0]-mid[1][2]);
+        vst1_s8(dst + 1*cstride*4 + c*4 + 1*cstride*4*4, mid[1][1]+mid[1][2]);
+        vst1_s8(dst + 2*cstride*4 + c*4 + 1*cstride*4*4, mid[1][2]-mid[1][1]);
+        vst1_s8(dst + 3*cstride*4 + c*4 + 1*cstride*4*4, mid[1][3]-mid[1][1]);
+        vst1_s8(dst + 0*cstride*4 + c*4 + 1*cstride*4*4+8, v[0][0]);
+        vst1_s8(dst + 1*cstride*4 + c*4 + 1*cstride*4*4+8, v[0][0]);
+        vst1_s8(dst + 2*cstride*4 + c*4 + 1*cstride*4*4+8, v[0][0]);
+        vst1_s8(dst + 3*cstride*4 + c*4 + 1*cstride*4*4+8, v[0][0]);
+
+        vst1_s8(dst + 0*cstride*4 + c*4 + 2*cstride*4*4, mid[2][0]-mid[2][2]);
+        vst1_s8(dst + 1*cstride*4 + c*4 + 2*cstride*4*4, mid[2][1]+mid[2][2]);
+        vst1_s8(dst + 2*cstride*4 + c*4 + 2*cstride*4*4, mid[2][2]-mid[2][1]);
+        vst1_s8(dst + 3*cstride*4 + c*4 + 2*cstride*4*4, mid[2][3]-mid[2][1]);
+        vst1_s8(dst + 0*cstride*4 + c*4 + 2*cstride*4*4+8, v[0][0]);
+        vst1_s8(dst + 1*cstride*4 + c*4 + 2*cstride*4*4+8, v[0][0]);
+        vst1_s8(dst + 2*cstride*4 + c*4 + 2*cstride*4*4+8, v[0][0]);
+        vst1_s8(dst + 3*cstride*4 + c*4 + 2*cstride*4*4+8, v[0][0]);
+
+        vst1_s8(dst + 0*cstride*4 + c*4 + 3*cstride*4*4, mid[3][0]-mid[3][2]);
+        vst1_s8(dst + 1*cstride*4 + c*4 + 3*cstride*4*4, mid[3][1]+mid[3][2]);
+        vst1_s8(dst + 2*cstride*4 + c*4 + 3*cstride*4*4, mid[3][2]-mid[3][1]);
+        vst1_s8(dst + 3*cstride*4 + c*4 + 3*cstride*4*4, mid[3][3]-mid[3][1]);
+        vst1_s8(dst + 0*cstride*4 + c*4 + 3*cstride*4*4+8, v[0][0]);
+        vst1_s8(dst + 1*cstride*4 + c*4 + 3*cstride*4*4+8, v[0][0]);
+        vst1_s8(dst + 2*cstride*4 + c*4 + 3*cstride*4*4+8, v[0][0]);
+        vst1_s8(dst + 3*cstride*4 + c*4 + 3*cstride*4*4+8, v[0][0]);
     }
 }
 
@@ -154,7 +225,7 @@ void kernel4x4(int cin, int hin, int win, int cout, int hout,
                 int32_t *bias, int pad) 
 {
     int8_t *restrict b = sb, *restrict c = sc;
-    int cdiv16 = cin/16;
+    int cin16 = (cin+8)/16*16;
     if(!win_midbuffer){
         win_midbuffer = (int8_t *)malloc(1024 * 32);
         src_midbuffer = (int8_t *)malloc(1024 * 32);
@@ -189,7 +260,7 @@ void kernel4x4(int cin, int hin, int win, int cout, int hout,
                 }
             }
 #ifdef DEBUG_PRINT_DATA
-            print_matrix(16*4,cin, win_midbuffer, cin);
+            print_matrix(16*4,cin16, win_midbuffer, cin16);
 #endif
             for(int j = 0; j < cout; j += 4) {
                 int8_t  *win_temp = win_midbuffer;
@@ -203,7 +274,7 @@ void kernel4x4(int cin, int hin, int win, int cout, int hout,
                     "mov x8, %0\n"
                     "ld1 {v14.16b, v15.16b}, [x10], #32\n"
                     "ld1 {v8.16b, v9.16b}, [x8], #32\n"
-                    "subs x9, %5, #1\n"
+                    "subs x9, %5, #16\n"
                     
                     "smull v0.8h, v12.8b, v8.8b\n"
                     "smull v1.8h, v13.8b, v8.8b\n"
@@ -315,7 +386,7 @@ void kernel4x4(int cin, int hin, int win, int cout, int hout,
                     "    smull v7.8h, v15.8b, v11.8b\n"
                      
                     "    smlal2 v4.8h, v12.16b, v11.16b\n"
-                    "    subs x9, x9, #1\n"
+                    "    subs x9, x9, #16\n"
                     "    smlal2 v5.8h, v13.16b, v11.16b\n"
                     "    smlal2 v6.8h, v14.16b, v11.16b\n"
                     "    ld1 {v12.16b, v13.16b}, [x10], #32\n"
@@ -349,13 +420,13 @@ void kernel4x4(int cin, int hin, int win, int cout, int hout,
                       "=r"(dst_temp),
                       "=r"(cin),
                       "=r"(cout),
-                      "=r"(cdiv16)
+                      "=r"(cin16)
                     : "0"(win_temp),
                       "1"(b),
                       "2"(dst_temp),
                       "3"(cin),
                       "4"(cout),
-                      "5"(cdiv16)
+                      "5"(cin16)
                     : "memory", "cc", "x8", "x9","x10", 
                     "v0", "v1", "v2", "v3", "v4","v5","v6","v7", 
                     "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15",  
@@ -363,8 +434,8 @@ void kernel4x4(int cin, int hin, int win, int cout, int hout,
                     "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31"
             	    );  
 
-                    b += 4 * cin;
-                    win_temp += 4 * cin;
+                    b += 4 * cin16;
+                    win_temp += 4 * cin16;
                     dst_temp += 16;
                 }// end wintile
                 for(int ht=0; ht<2; ht++){
