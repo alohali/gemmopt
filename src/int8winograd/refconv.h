@@ -17,7 +17,9 @@ static inline int8_t int32ToInt8(int data, int bias, float scale) {
 }
 
 //nhwc data, oirs weight
-static void convi8_ref(const int8_t *src, int8_t *dst, const int8_t *weight, int32_t*  bias, float * scale, int height, int width, int cin, int cout, int hin, int win, int kernel, int pad, int stride){
+static void convi8_ref(const int8_t *src, int8_t *dst, const int8_t *weight, int32_t*  bias, 
+                        float * scale, int height, int width, int cin, int cout, int hin, 
+                        int win, int kernel, int pad, int stride){
     int8_t a, b;
 	for(int h=0; h<height; h++){
 		for(int w=0; w<width; w++){

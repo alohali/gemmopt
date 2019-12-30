@@ -39,9 +39,17 @@ int main(int argc, char**argv)
   int testcase[][4] = {
       //cin cout h w
      // {256, 512, 3*32, 4*32},
-//      {64, 64, 3*16, 4*16},
-      {64, 64, 128, 128},
+      {24, 4, 4, 4},
       {128, 128, 56, 56},
+      {24, 32, 32, 32},
+      {8, 32, 32, 32},
+      {32, 32, 32, 32},
+      {32, 32, 16, 16},
+      {32, 32, 32, 32},
+      {32, 32, 64, 64},
+      {64, 64, 64, 64},
+      {64, 64, 16, 16},
+      {128, 128, 32, 32},
       {128, 256, 28, 28},
       {256, 256, 28, 28},
       {512, 512, 12, 16},
@@ -72,14 +80,20 @@ int main(int argc, char**argv)
     bias  = (int32_t *)malloc(cout * sizeof(int32_t));
 
     memset(bias, 0, cout * sizeof(int32_t));
+    int random = 1;
     for(int si=0;si<cout; si++){
-        scale[si] = (float)(rand() % 64)/255.0;
-        bias[si] = (rand() % 16);
+        if(random==1){
+            scale[si] = (float)(rand() % 64)/255.0;
+            bias[si] = (rand() % 16);
+        }else{
+            scale[si] = 1;
+            bias[si] = 0; 
+        }
     }
 
     /* Generate random matrices A, B, Cold */
-    random_matrix( hin*win,cin, a, cin , 0);
-    random_matrix( cout, cin, b, cin, 0);
+    random_matrix( hin*win,cin, a, cin , random);
+    random_matrix( cout, cin, b, cin, random);
     convi8_ref(a, cref, b, bias, scale,   hout, wout, cin, cout);
 
     packB_k8(cin, cout, b, bpack);

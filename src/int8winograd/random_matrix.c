@@ -14,7 +14,7 @@ void random_matrix( int m, int n, int8_t *a, int lda, int random )
     if(random==1)
       A( i,j ) = rand() % 16-8;
     else if(random>1)
-      A( i, j) = (i  + j) % 8;
+      A( i, j) = (i  + j) % random;
     else 
       A( i, j) = 1;
 }
