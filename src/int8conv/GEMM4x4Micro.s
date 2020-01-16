@@ -33,7 +33,7 @@ st1 {v12.4s, v13.4s, v14.4s, v15.4s}, [sp], #64
 
 
 //prefetch data
-//assume buffer c>=16 even c==8
+//assume buffer c>=16, even c==8
 ld1 {v12.16b, v13.16b}, [x1], #32 
 add x11, x0, x3 
 add x12, x11, x3 

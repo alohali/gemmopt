@@ -5,10 +5,10 @@ NEW  := winograd22
 # sample makefile
 #
 
-CC         := gcc
+CC         := aarch64-linux-gnu-gcc
 LINKER     := $(CC)
 #CFLAGS     := -O0 -g -Wall
-CFLAGS     := -Wall -O2 -flax-vector-conversions  
+CFLAGS     := -Wall -O3 -flax-vector-conversions  
 LDFLAGS    := -lm
 
 UTIL       := copy_matrix.o \
@@ -29,7 +29,8 @@ all:
 	make test_MMult.x
 
 test_MMult.x: $(TEST_OBJS) $(UTIL) parameters.h
-	$(LINKER) $(TEST_OBJS) $(UTIL) $(LDFLAGS) \
+	$(CC) BGEMM_4x4.S -c -o bgemm.o
+	$(LINKER) bgemm.o $(TEST_OBJS) $(UTIL) $(LDFLAGS) \
         $(BLAS_LIB) -o $(TEST_BIN) $@ 
 
 run:	

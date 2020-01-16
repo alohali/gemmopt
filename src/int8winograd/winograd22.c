@@ -60,6 +60,7 @@ void weight_convert(const int8_t* src, int8_t* dst, int cin, int cout) {
         }
     }
 #ifdef DEBUG_PRINT_DATA
+    printf("weight\n");
     print_matrix(cin*cout/4,64,dst, 64 );
 #endif
 }
@@ -214,8 +215,12 @@ void dst_convert(int32_t *src, int8_t *dst, int ws, int hs,float *scale, int32_t
     vst1_lane_s32(dst_wr + ws/4, vreinterpret_s32_s8(rmid[0]), 1);//*(int32_t*)&rmid[0];
     vst1_lane_s32(dst_wr + hs/4, vreinterpret_s32_s8(rmid[1]), 0);//*(int32_t*)&rmid[0];
     vst1_lane_s32(dst_wr + hs/4 + ws/4, vreinterpret_s32_s8(rmid[1]), 1);//*(int32_t*)&rmid[0];
+#ifdef DEBUG_PRINT_DATA
+    printf("dst %d %d %d %f\n", dst_wr[0], dst_wr[ws / 4], bias[0], scale[0]);
+#endif
 }
 
+extern void BGEMM_4x4(int8_t *a, const int8_t *b, int8_t *c, int cin, int cout, int cdiv16);
 
 int8_t  *win_midbuffer = NULL;
 int8_t  *src_midbuffer = NULL;
@@ -224,7 +229,7 @@ void kernel4x4(int cin, int hin, int win, int cout, int hout,
                 int wout, int8_t* sa, int8_t * sb, int8_t* sc, float *scale, 
                 int32_t *bias, int pad) 
 {
-    int8_t *restrict b = sb, *restrict c = sc;
+    int8_t *b = sb, *c = sc;
     int cin16 = (cin+8)/16*16;
     if(!win_midbuffer){
         win_midbuffer = (int8_t *)malloc(1024 * 32);
@@ -260,180 +265,14 @@ void kernel4x4(int cin, int hin, int win, int cout, int hout,
                 }
             }
 #ifdef DEBUG_PRINT_DATA
+            printf("win_midbuffer\n");
             print_matrix(16*4,cin16, win_midbuffer, cin16);
 #endif
             for(int j = 0; j < cout; j += 4) {
                 int8_t  *win_temp = win_midbuffer;
                 int32_t *dst_temp = dst_midbuffer;
                 for(int wintile=0; wintile<16; wintile++) {
-                    
-            	    asm volatile (
-
-                    "mov x10, %1\n"
-                    "ld1 {v12.16b, v13.16b}, [x10], #32\n"
-                    "mov x8, %0\n"
-                    "ld1 {v14.16b, v15.16b}, [x10], #32\n"
-                    "ld1 {v8.16b, v9.16b}, [x8], #32\n"
-                    "subs x9, %5, #16\n"
-                    
-                    "smull v0.8h, v12.8b, v8.8b\n"
-                    "smull v1.8h, v13.8b, v8.8b\n"
-                    "smlal2 v0.8h, v12.16b, v8.16b\n"
-                    "smlal2 v1.8h, v13.16b, v8.16b\n"
-                    "saddlp v16.4s, v0.8h\n"
-                    "saddlp v17.4s, v1.8h\n"
-                     
-                    "smull v2.8h, v14.8b, v8.8b\n"
-                    "smull v3.8h, v15.8b, v8.8b\n"
-                    "smull v4.8h, v12.8b, v9.8b\n"
-                    "ld1 {v10.16b}, [x8], #16\n"
-                    "smull v5.8h, v13.8b, v9.8b\n"
-                    "smull v6.8h, v14.8b, v9.8b\n"
-                    "smull v7.8h, v15.8b, v9.8b\n"
-                    "smlal2 v2.8h, v14.16b, v8.16b\n"
-                    "ld1 {v11.16b}, [x8], #16\n"
-                    "smlal2 v3.8h, v15.16b, v8.16b\n"
-                    "smlal2 v4.8h, v12.16b, v9.16b\n"
-                    "smlal2 v5.8h, v13.16b, v9.16b\n"
-                    "smlal2 v6.8h, v14.16b, v9.16b\n"
-                    "smlal2 v7.8h, v15.16b, v9.16b\n"
-                    "saddlp v18.4s, v2.8h\n"
-                    "saddlp v19.4s, v3.8h\n"
-                    "saddlp v20.4s, v4.8h\n"
-                    "saddlp v21.4s, v5.8h\n"
-                    "saddlp v22.4s, v6.8h\n"
-                    "saddlp v23.4s, v7.8h\n"
-                     
-                    
-                    "smull v0.8h, v12.8b, v10.8b\n"
-                    "smull v1.8h, v13.8b, v10.8b\n"
-                    "smull v2.8h, v14.8b, v10.8b\n"
-                    "smull v3.8h, v15.8b, v10.8b\n"
-                    "smlal2 v0.8h, v12.16b, v10.16b\n"
-                    "smlal2 v1.8h, v13.16b, v10.16b\n"
-                    "smlal2 v2.8h, v14.16b, v10.16b\n"
-                    "smlal2 v3.8h, v15.16b, v10.16b\n"
-                    "    ld1 {v8.16b}, [x8], #16\n"
-                    "saddlp v24.4s, v0.8h\n"
-                    "saddlp v25.4s, v1.8h\n"
-                    "    ld1 {v9.16b}, [x8], #16\n"
-                    "saddlp v26.4s, v2.8h\n"
-                    "saddlp v27.4s, v3.8h\n"
-                     
-                    "smull v4.8h, v12.8b, v11.8b\n"
-                    "smull v5.8h, v13.8b, v11.8b\n"
-                    "smull v6.8h, v14.8b, v11.8b\n"
-                    "smull v7.8h, v15.8b, v11.8b\n"
-                    "smlal2 v4.8h, v12.16b, v11.16b\n"
-                    "smlal2 v5.8h, v13.16b, v11.16b\n"
-                    "ld1 {v12.16b, v13.16b}, [x10], #32\n"
-                    "smlal2 v6.8h, v14.16b, v11.16b\n"
-                    "smlal2 v7.8h, v15.16b, v11.16b\n"
-                    "saddlp v28.4s, v4.8h\n"
-                    "saddlp v29.4s, v5.8h\n"
-                    "    ld1 {v14.16b, v15.16b}, [x10], #32\n"
-                    "saddlp v30.4s, v6.8h\n"
-                    "saddlp v31.4s, v7.8h\n"
-                     
-                    "beq L4LoopSzEnd\n"
-                     
-                    "L4LoopSz:\n"
-                    "    smull v0.8h, v12.8b, v8.8b\n"
-                    "    ld1 {v10.16b}, [x8], #16\n"
-                    "    smull v1.8h, v13.8b, v8.8b\n"
-                    "    smull v2.8h, v14.8b, v8.8b\n"
-                    "    smull v3.8h, v15.8b, v8.8b\n"
-                    "    smlal2 v0.8h, v12.16b, v8.16b\n"
-                    "    ld1 {v11.16b}, [x8], #16\n"
-                    "    smlal2 v1.8h, v13.16b, v8.16b\n"
-                    "    smlal2 v2.8h, v14.16b, v8.16b\n"
-                    "    smlal2 v3.8h, v15.16b, v8.16b\n"
-                    "    sadalp v16.4s, v0.8h\n"
-                    "    smull v4.8h, v12.8b, v9.8b\n"
-                    "    sadalp v17.4s, v1.8h\n"
-                    "    smull v5.8h, v13.8b, v9.8b\n"
-                    "    sadalp v18.4s, v2.8h\n"
-                    "    smull v6.8h, v14.8b, v9.8b\n"
-                    "    sadalp v19.4s, v3.8h\n"
-                    "    smull v7.8h, v15.8b, v9.8b\n"
-                     
-                    "    smlal2 v4.8h, v12.16b, v9.16b\n"
-                    "    ld1 {v8.16b}, [x8], #16\n"
-                    "    smlal2 v5.8h, v13.16b, v9.16b\n"
-                    "    smlal2 v6.8h, v14.16b, v9.16b\n"
-                    "    smlal2 v7.8h, v15.16b, v9.16b\n"
-                    "    sadalp v20.4s, v4.8h\n"
-                    "    ld1 {v9.16b}, [x8], #16\n"
-                    "    smull v0.8h, v12.8b, v10.8b\n"
-                    "    sadalp v21.4s, v5.8h\n"
-                    "    smull v1.8h, v13.8b, v10.8b\n"
-                    "    sadalp v22.4s, v6.8h\n"
-                    "    smull v2.8h, v14.8b, v10.8b\n"
-                    "    sadalp v23.4s, v7.8h\n"
-                    "    smull v3.8h, v15.8b, v10.8b\n"
-                     
-                    "    smlal2 v0.8h, v12.16b, v10.16b\n"
-                    "    smlal2 v1.8h, v13.16b, v10.16b\n"
-                    "    smlal2 v2.8h, v14.16b, v10.16b\n"
-                    "    smlal2 v3.8h, v15.16b, v10.16b\n"
-                    "    sadalp v24.4s, v0.8h\n"
-                    "    smull v4.8h, v12.8b, v11.8b\n"
-                    "    sadalp v25.4s, v1.8h\n"
-                    "    smull v5.8h, v13.8b, v11.8b\n"
-                    "    sadalp v26.4s, v2.8h\n"
-                    "    smull v6.8h, v14.8b, v11.8b\n"
-                    "    sadalp v27.4s, v3.8h\n"
-                    "    smull v7.8h, v15.8b, v11.8b\n"
-                     
-                    "    smlal2 v4.8h, v12.16b, v11.16b\n"
-                    "    subs x9, x9, #16\n"
-                    "    smlal2 v5.8h, v13.16b, v11.16b\n"
-                    "    smlal2 v6.8h, v14.16b, v11.16b\n"
-                    "    ld1 {v12.16b, v13.16b}, [x10], #32\n"
-                    "    smlal2 v7.8h, v15.16b, v11.16b\n"
-                    "    sadalp v28.4s, v4.8h\n"
-                    "    ld1 {v14.16b, v15.16b}, [x10], #32\n"
-                    "    sadalp v29.4s, v5.8h\n"
-                    "    sadalp v30.4s, v6.8h\n"
-                    "    sadalp v31.4s, v7.8h\n"
-                    "    bne L4LoopSz\n"
-                     
-                    "L4LoopSzEnd:\n"
-                     
-                    "addp v4.4s, v16.4s, v17.4s\n"
-                    "addp v5.4s, v18.4s, v19.4s\n"
-                    "addp v6.4s, v20.4s, v21.4s\n"
-                    "addp v7.4s, v22.4s, v23.4s\n"
-                    "addp v8.4s, v24.4s, v25.4s\n"
-                    "addp v9.4s, v26.4s, v27.4s\n"
-                    "addp v10.4s, v28.4s, v29.4s\n"
-                    "addp v11.4s, v30.4s, v31.4s\n"
-                     
-                    "addp v12.4s, v4.4s, v5.4s\n"
-                    "addp v13.4s, v6.4s, v7.4s\n"
-                    "addp v14.4s, v8.4s, v9.4s\n"
-                    "addp v15.4s, v10.4s, v11.4s\n"
-                    "st1 {v12.4s, v13.4s, v14.4s, v15.4s}, [%2]\n"
-
-                    : "=r"(win_temp),
-                      "=r"(b),
-                      "=r"(dst_temp),
-                      "=r"(cin),
-                      "=r"(cout),
-                      "=r"(cin16)
-                    : "0"(win_temp),
-                      "1"(b),
-                      "2"(dst_temp),
-                      "3"(cin),
-                      "4"(cout),
-                      "5"(cin16)
-                    : "memory", "cc", "x8", "x9","x10", 
-                    "v0", "v1", "v2", "v3", "v4","v5","v6","v7", 
-                    "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15",  
-                    "v16", "v17", "v18", "v19", "v20", "v21", "v22", "v23", 
-                    "v24", "v25", "v26", "v27", "v28", "v29", "v30", "v31"
-            	    );  
-
+                    BGEMM_4x4(win_temp, b, dst_temp, cin, cout, cin16);
                     b += 4 * cin16;
                     win_temp += 4 * cin16;
                     dst_temp += 16;
@@ -446,7 +285,8 @@ void kernel4x4(int cin, int hin, int win, int cout, int hout,
                     }
                 }
 #ifdef DEBUG_PRINT_DATA
-            print_matrix1(16*4,4, dst_midbuffer, 4);
+                printf("dst_midbuffer\n");
+                print_matrix1(16 * 4, 4, dst_midbuffer, 4);
 #endif
             } // endo
             b = sb;
