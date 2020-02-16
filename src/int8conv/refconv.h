@@ -6,10 +6,11 @@
 
 
 static inline int8_t int32ToInt8(int data, int bias, float scale) {
-    float value = (float)(data + bias) * scale;
+    float value = (float)(data + bias) * scale + 0.5;
     value       = value>-128.0f?value:-128.0f;
     value       = value<127.0f ?value:127.0f;
-    return (int8_t)(roundf(value));
+	int ret = value > 0?floorf(value):ceilf(value);
+	return (int8_t)ret;
 }
 
 

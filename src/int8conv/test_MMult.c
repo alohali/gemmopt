@@ -29,7 +29,7 @@ int main(int argc, char**argv)
     *a, *b, *c, *cref, *bpack;    
   int32_t *bias;
   float *scale;
-  printf( "\ncin,cout,h,w,Gflops\n" );
+  printf( "\nci co h w  t gop\n" );
     
   int compare = 1;
   if(argc>1){
@@ -41,34 +41,34 @@ int main(int argc, char**argv)
       // {256, 512, 3*32, 4*32},
       {32, 2, 2, 2},
       {64, 4, 4, 4},
-      {128, 128, 56, 56},
-      {24, 32, 32, 32},
-      {8, 32, 32, 32},
-      {32, 32, 32, 32},
-      {32, 32, 16, 16},
-      {32, 32, 32, 32},
-      {32, 32, 64, 64},
-      {64, 64, 64, 64},
-      {64, 64, 16, 16},
-      {128, 128, 32, 32},
-      {128, 256, 28, 28},
-      {256, 256, 28, 28},
-      {512, 512, 12, 16},
+      // {128, 128, 56, 56},
+      // {24, 32, 32, 32},
+      // {8, 32, 32, 32},
+      // {32, 32, 32, 32},
+      // {32, 32, 16, 16},
+      // {32, 32, 32, 32},
+      // {32, 32, 64, 64},
+      // {64, 64, 64, 64},
+      // {64, 64, 16, 16},
+      // {128, 128, 32, 32},
+      // {128, 256, 28, 28},
+      // {256, 256, 28, 28},
+      // {512, 512, 12, 16},
       // {1024, 512, 3*16, 4*12},
       // {2048, 2048, 3*16, 4*12},
       // {64, 128, 3*16, 4*16},
       // /{512, 64, 3*32, 4*32},
+      //mobilenet
+      {32, 64, 112, 112},
+      {64, 128, 56, 56},
+      {128, 128, 56, 56},
+      {128, 256, 28, 28},
+      {256, 256, 28, 28},
+      {256, 512, 14, 14},
+      {512, 512, 14, 14},
+      {512, 1024, 25, 2},
+      {1024, 1024, 25, 2},
   };
-  //mobilenet
-  // int testcase[][4] = {
-  //     {32, 64, 112, 112},
-  //     {64, 128, 56, 56},
-  //     {128, 128, 56, 56},
-  //     {128, 256, 28, 28},
-  //     {256, 256, 28, 28},
-  //     {256, 512, 14, 14},
-  //     {512, 512, 14, 14},
-  // };
   for (int tid = 0; tid < sizeof(testcase) / sizeof(testcase[0]); tid++){
         int cin = testcase[tid][0];
   int cout = testcase[tid][1];
@@ -81,9 +81,9 @@ int main(int argc, char**argv)
   /* Allocate space for the matrices */
   /* Note: I create an extra column in A to make sure that
        prefetching beyond the matrix does not cause a segfault */
-  a = (int8_t *)malloc(hin * win * (cin + 1) * sizeof(int8_t));
-  b = (int8_t *)malloc(cin * cout * sizeof(int8_t));
-  bpack = (int8_t *)malloc(cin * cout * NREPEATS * sizeof(int8_t));
+  a = (int8_t *)malloc(hin * win * (cin) * sizeof(int8_t) + 64);
+  b = (int8_t *)malloc(cin * cout * sizeof(int8_t) + 64);
+  bpack = (int8_t *)malloc(cin * cout * NREPEATS * sizeof(int8_t) + 64);
   c = (int8_t *)malloc(hout * wout * cout * sizeof(int8_t));
   cref = (int8_t *)malloc(hout * wout * cout * sizeof(int8_t));
   scale = (float *)malloc(cout * sizeof(float));
@@ -95,8 +95,8 @@ int main(int argc, char**argv)
   {
     if (random)
     {
-      scale[si] = (float)((rand() * si) % 64) / 255.0;
-      bias[si] = (rand() * si % 16);
+      scale[si] = (float)((rand()) % 64) / 255.0;
+      bias[si] = (rand() % 16);
     }
     else
     {
@@ -132,7 +132,7 @@ int main(int argc, char**argv)
     dtime = dclock() - dtime;
     dtime /= NREPEATS;
 
-    printf( "%d, %d, %d, %d, %.3f, %.3f\n", cin, cout, hout, wout, dtime*1000, gflops / dtime);
+    printf( "%d %d %d %d %.3f %.3f\n", cin, cout, hout, wout, dtime*1000, gflops / dtime);
     fflush( stdout );
 
     free( a );

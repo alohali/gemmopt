@@ -7,7 +7,7 @@ NEW  := 2x2i8v1
 
 CC         := arm-linux-gnueabihf-gcc
 LINKER     := $(CC)
-# CFLAGS     :=  -g -Wall
+#CFLAGS     :=  -g -Wall
 CFLAGS     := -Wall -O3 -flax-vector-conversions  
 LDFLAGS    := -lm
 
@@ -31,7 +31,7 @@ all:
 
 test_MMult.x: $(TEST_OBJS) $(UTIL) parameters.h 
 	arm-linux-gnueabihf-as GEMM2x2Micro.S -mfpu=neon -o gemm22.o
-	$(LINKER) -mfpu=neon  $(TEST_OBJS) gemm22.o $(NEW).c $(UTIL) $(LDFLAGS) \
+	$(LINKER) -mfpu=neon ${CFLAGS} $(TEST_OBJS) gemm22.o $(NEW).c $(UTIL) $(LDFLAGS) \
         $(BLAS_LIB) -o $(TEST_BIN) $@ 
 run:	
 	make all
