@@ -39,8 +39,10 @@ int main(int argc, char**argv)
   int testcase[][4] = {
       //cin cout h w
       // {256, 512, 3*32, 4*32},
-      {32, 2, 2, 2},
-      {64, 4, 4, 4},
+      // {32, 2, 2, 2},
+      {32, 4, 2, 2},
+      {8, 4, 4, 4},
+      {24, 4, 4, 4},
       // {128, 128, 56, 56},
       // {24, 32, 32, 32},
       // {8, 32, 32, 32},
@@ -90,7 +92,7 @@ int main(int argc, char**argv)
   bias = (int32_t *)malloc(cout * sizeof(int32_t));
 
   memset(bias, 0, cout * sizeof(int32_t));
-  int random = 1;
+  int random = 0;
   for (int si = 0; si < cout; si++)
   {
     if (random)
