@@ -37,12 +37,11 @@ ldr r7, [sp, #36]
 
 vpush {q4-q7}
 
-add r8, r0, r3 
-cmp r5, #2
-
 //prefetch data
 //assume buffer c>=16, even c==8
+cmp r5, #2
 vld1.8 {q10, q11}, [r1]!
+add r8, r0, r3 
 vld1.8 {q12, q13}, [r1]!
 
 vld1.8 {q14}, [r0]!
@@ -59,12 +58,14 @@ C16Start:
     vpaddl.s16 q2, q0 
     vpaddl.s16 q3, q1 
 
+    cmp r5, #2
     vmull.s8 q0, d20, d30
     vmull.s8 q1, d22, d30
     vmlal.s8 q0, d21, d31 
     vmlal.s8 q1, d23, d31 
     vpaddl.s16 q4, q0 
     vpaddl.s16 q5, q1 
+    vld1.8 {q10, q11}, [r1]!
 
     vmull.s8 q0, d24, d28 
     vmull.s8 q1, d26, d28 
@@ -72,18 +73,16 @@ C16Start:
     vmlal.s8 q1, d27, d29 
     vpaddl.s16 q6, q0 
     vpaddl.s16 q7, q1 
+    vld1.8 {q14}, [r0]!
 
     vmull.s8 q0, d24, d30
     vmull.s8 q1, d26, d30
     vmlal.s8 q0, d25, d31 
     vmlal.s8 q1, d27, d31 
+    vld1.8 {q15}, [r8]!
     vpaddl.s16 q8, q0 
     vpaddl.s16 q9, q1 
 
-    cmp r5, #2
-    vld1.8 {q14}, [r0]!
-    vld1.8 {q15}, [r8]!
-    vld1.8 {q10, q11}, [r1]!
     vld1.8 {q12, q13}, [r1]!
      
     blt C8Last 
@@ -103,29 +102,26 @@ C16Start:
         vmlal.s8 q1, d23, d31 
         vpadal.s16 q4, q0 
         vpadal.s16 q5, q1 
+        vld1.8 {q10, q11}, [r1]!
 
+        cmp r5, #2 
         vmull.s8 q0, d24, d28 
         vmull.s8 q1, d26, d28 
         vmlal.s8 q0, d25, d29 
         vmlal.s8 q1, d27, d29 
         vpadal.s16 q6, q0 
+        vld1.8 {q14}, [r0]! 
         vpadal.s16 q7, q1 
 
         vmull.s8 q0, d24, d30
         vmull.s8 q1, d26, d30
         vmlal.s8 q0, d25, d31 
         vmlal.s8 q1, d27, d31 
+        vld1.8 {q15}, [r8]! 
         vpadal.s16 q8, q0 
+        vld1.8 {q12, q13}, [r1]!
         vpadal.s16 q9, q1 
 
-
-        cmp r5, #2 
-
-
-        vld1.8 {q14}, [r0]! 
-        vld1.8 {q15}, [r8]! 
-        vld1.8 {q10, q11}, [r1]!
-        vld1.8 {q12, q13}, [r1]!
         bge C16Loop 
  
 C8Last:
@@ -211,9 +207,7 @@ LoopEnd:
     vqmovn.s32 d9,q1
     vqmovn.s16 d10,q4 
     
-    //vmov.32 r8, d4[0]
-    vst1.s32 d10[0], [r2]
-    add r2, r2, r4
+    vst1.s32 d10[0], [r2], r4
     vst1.s32 d10[1], [r2]
 
 vpop {q4-q7}
