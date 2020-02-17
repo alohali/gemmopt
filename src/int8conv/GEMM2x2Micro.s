@@ -189,8 +189,8 @@ LoopEnd:
     vpadd.s32 d18, d19
 
     vpadd.s32 d4, d4, d6 
-    vpadd.s32 d5, d8, d10 
-    vpadd.s32 d6, d12, d14 
+    vpadd.s32 d6, d8, d10 
+    vpadd.s32 d5, d12, d14 
     vpadd.s32 d7, d16, d18 
     
     vqadd.s32 q2, q14 

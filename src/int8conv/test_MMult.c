@@ -92,7 +92,7 @@ int main(int argc, char**argv)
   bias = (int32_t *)malloc(cout * sizeof(int32_t));
 
   memset(bias, 0, cout * sizeof(int32_t));
-  int random = 0;
+  int random = 1;
   for (int si = 0; si < cout; si++)
   {
     if (random)
@@ -108,7 +108,7 @@ int main(int argc, char**argv)
     }
 
     /* Generate random matrices A, B, Cold */
-    random_matrix( hin*win,cin, a, cin , random);
+    random_matrix(hin * win, cin, a, cin, random);
     random_matrix( cout, cin, b, cin, random);
     convi8_ref(a, cref, b, bias, scale,   hout, wout, cin, cout);
 
