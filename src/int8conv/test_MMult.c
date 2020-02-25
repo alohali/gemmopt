@@ -10,7 +10,7 @@ void MY_IM_GEMM(int, int, int,int, int8_t *, int8_t *, int8_t *);
 void copy_matrix(int, int, int8_t *, int, int8_t *, int );
 void random_matrix(int, int, int8_t *, int, int);
 int8_t compare_matrices( int, int, int8_t *, int, int8_t *, int );
-void packB_k8(int cin, int cout, int8_t* from, int8_t* to);
+void packB(int cin, int cout, int8_t* from, int8_t* to);
 
 double dclock();
 
@@ -39,10 +39,8 @@ int main(int argc, char**argv)
   int testcase[][4] = {
       //cin cout h w
       // {256, 512, 3*32, 4*32},
-      // {32, 2, 2, 2},
-      {32, 4, 2, 2},
       {8, 4, 4, 4},
-      {24, 4, 4, 4},
+      {16, 4, 4, 4},
       // {128, 128, 56, 56},
       // {24, 32, 32, 32},
       // {8, 32, 32, 32},
@@ -112,7 +110,7 @@ int main(int argc, char**argv)
     random_matrix( cout, cin, b, cin, random);
     convi8_ref(a, cref, b, bias, scale,   hout, wout, cin, cout);
 
-    packB_k8(cin, cout, b, bpack);  
+    packB(cin, cout, b, bpack);  
     /* check output */
     for ( rep=0; rep<2; rep++ ){
 	  memset(c, 0, hout*wout*cout*sizeof(int8_t));

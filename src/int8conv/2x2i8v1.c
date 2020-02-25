@@ -29,7 +29,7 @@
 #define W_UNROLL (4)
 #define H_UNROLL (3)
 
-void packB_k8(int cin, int cout, int8_t *from, int8_t *to)
+void packB(int cin, int cout, int8_t *from, int8_t *to)
 {
 
     int64_t *src = (int64_t *)from;
