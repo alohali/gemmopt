@@ -16,8 +16,8 @@
 .endm
 
 .align 5
-asm_function GEMM2x2Micro 
-//void GEMM2x2Micro(int8_t* src, const int8_t* weight, int8_t* dst, int src_w_step, int dst_depth, 
+asm_function GEMM4x4Micro 
+//void GEMM4x4Micro(int8_t* src, const int8_t* weight, int8_t* dst, int src_w_step, int dst_depth, 
 //                            int cdiv8, float *scale, int32_t*bias)
 src          .req r0
 weight       .req r1
@@ -31,17 +31,17 @@ bias         .req r7
 
 push {r4, r5, r6, r7, r8, lr}
 
-ldr r4, [sp, #24]
-ldr r5, [sp, #28]
-ldr r6, [sp, #32]
-ldr r7, [sp, #36]
-
-vpush {q4-q7}
 
 //prefetch data
 //assume buffer c>=16, even c==8
 vld1.8 {q12, q13}, [weight]!
 vld1.8 {q14, q15}, [src]!
+
+ldr r4, [sp, #24]
+ldr r5, [sp, #28]
+ldr r6, [sp, #32]
+ldr r7, [sp, #36]
+vpush {q4-q7}
 
 C8Start:
     subs cdiv8, cdiv8, #1
@@ -56,25 +56,25 @@ C8Start:
     vmlal.s8 q3, d31, d27
     vrev64.32 q13, q13
     vpaddl.s16 q4, q0 
-    vpaddl.s16 q5, q1 
-    vpaddl.s16 q6, q2 
-    vpaddl.s16 q7, q3 
-
     vmull.s8 q0, d28, d24 
+    vpaddl.s16 q5, q1 
     vmull.s8 q1, d30, d24 
+    vpaddl.s16 q6, q2 
     vmull.s8 q2, d28, d26
+    vpaddl.s16 q7, q3 
     vmull.s8 q3, d30, d26
 
     vmlal.s8 q0, d29, d25
     vmlal.s8 q1, d31, d25
+    vld1.8 {q12}, [weight]!
     vmlal.s8 q2, d29, d27 
     vmlal.s8 q3, d31, d27
+    vld1.8 {q13}, [weight]!
     vpaddl.s16 q8, q0 
+    vld1.8 {q14, q15}, [src]!
     vpaddl.s16 q9, q1 
     vpaddl.s16 q10, q2
     vpaddl.s16 q11, q3 
-    vld1.8 {q12, q13}, [weight]!
-    vld1.8 {q14, q15}, [src]!
      
     beq LoopEnd 
       
@@ -91,20 +91,20 @@ C8Start:
         vmlal.s8 q3, d31, d27
         vrev64.32 q13, q13
         vpadal.s16 q4, q0 
+        vmull.s8 q0, d28, d24 
         vpadal.s16 q5, q1 
+        vmull.s8 q1, d30, d24 
         vpadal.s16 q6, q2 
+        vmull.s8 q2, d28, d26
         vpadal.s16 q7, q3 
-
-        vmull.s8 q0, d24, d28 
-        vmull.s8 q1, d26, d28 
-        vmull.s8 q2, d24, d30
-        vmull.s8 q3, d26, d30
-
-        vmlal.s8 q0, d25, d29 
-        vmlal.s8 q1, d27, d29 
-        vmlal.s8 q2, d25, d31 
-        vmlal.s8 q3, d27, d31 
-        vld1.8 {q12, q13}, [weight]!
+        vmull.s8 q3, d30, d26
+        
+        vmlal.s8 q0, d29, d25
+        vmlal.s8 q1, d31, d25
+        vld1.8 {q12}, [weight]!
+        vmlal.s8 q2, d29, d27 
+        vmlal.s8 q3, d31, d27
+        vld1.8 {q13}, [weight]!
         vpadal.s16 q8, q0 
         vpadal.s16 q9, q1 
         vld1.8 {q14, q15}, [src]!

@@ -7,28 +7,6 @@
 #include <assert.h>
 #include <stdlib.h>
 
-/* Block sizes */
-#define DEBUG_PACK_SHAPE
-#undef DEBUG_PACK_SHAPE
-#define DEBUG_PRINT_DATA
-#undef DEBUG_PRINT_DATA
-
-
-#define A(i,j) a[ (i)*lda + (j) ]
-#define B(i,j) b[ (i)*ldb + (j) ]
-#define C(i,j) c[ (i)*ldc + (j) ]
-
-#define min(i, j) ((i) < (j) ? (i): (j))
-
-#define CONV_H    (3*4)  // GEMM_R
-#define CONV_W    (4*4)  // GEMM_R
-#define CONV_K    (256)  // GEMM_P
-#define CONV_C    (32)  // GEMM_Q
-#define RS        (9)  // GEMM_Q
-#define R         (3)  // GEMM_Q
-#define W_UNROLL (4)
-#define H_UNROLL (3)
-
 
 void packB(int cin, int cout, int8_t* from, int8_t* to) {
 

@@ -64,10 +64,10 @@ int main(int argc, char**argv)
       {128, 128, 56, 56},
       {128, 256, 28, 28},
       {256, 256, 28, 28},
-      {256, 512, 14, 14},
-      {512, 512, 14, 14},
-      {512, 1024, 25, 2},
-      {1024, 1024, 25, 2},
+      {256, 512, 49, 4},
+      {512, 512, 49, 4},
+      // {512, 1024, 25, 2},
+      // {1024, 1024, 25, 2},
   };
   for (int tid = 0; tid < sizeof(testcase) / sizeof(testcase[0]); tid++){
         int cin = testcase[tid][0];
@@ -105,9 +105,10 @@ int main(int argc, char**argv)
     }
     }
 
+    printf("run %d %d %d %d: ", cin, cout, hout, wout);
     /* Generate random matrices A, B, Cold */
     random_matrix(hin * win, cin, a, cin, random);
-    random_matrix( cout, cin, b, cin, random);
+    random_matrix(cout, cin, b, cin, random);
     convi8_ref(a, cref, b, bias, scale,   hout, wout, cin, cout);
 
     packB(cin, cout, b, bpack);  
@@ -132,7 +133,7 @@ int main(int argc, char**argv)
     dtime = dclock() - dtime;
     dtime /= NREPEATS;
 
-    printf( "%d %d %d %d %.3f %.3f\n", cin, cout, hout, wout, dtime*1000, gflops / dtime);
+    printf( "%.3f %.3f\n", dtime*1000, gflops / dtime);
     fflush( stdout );
 
     free( a );

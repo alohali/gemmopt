@@ -1,11 +1,15 @@
 NEW  := 4x4armv7
 ASM  := GEMM4x4MicroV7.S
-CC   := arm-linux-gnueabihf-gcc
-AS   := arm-linux-gnueabihf-as
+CC   := arm-linux-gnueabihf-gcc -mfpu=neon
+AS   := arm-linux-gnueabihf-as -mfpu=neon
+# NEW  := 4x4i8v1
+# ASM  := GEMM4x4Micro.S
+# CC   := aarch64-linux-gnu-gcc
+# AS   := aarch64-linux-gnu-as
 
 LINKER     := $(CC)
-CFLAGS     :=  -g -Wall
-#CFLAGS     := -Wall -O3 -flax-vector-conversions  
+# CFLAGS     :=  -g -Wall
+CFLAGS     := -Wall -O3 -flax-vector-conversions  
 LDFLAGS    := -lm
 
 UTIL       := copy_matrix.o \
@@ -21,8 +25,8 @@ all:
 	make test_MMult.x
 
 test_MMult.x: $(TEST_OBJS) $(UTIL) parameters.h 
-	$(AS) $(ASM) -mfpu=neon -o gemm.o
-	$(CC) -mfpu=neon ${CFLAGS} $(TEST_OBJS) gemm.o $(NEW).c $(UTIL) $(LDFLAGS) \
+	$(AS) $(ASM) -o gemm.o
+	$(CC) ${CFLAGS} $(TEST_OBJS) gemm.o $(NEW).c $(UTIL) $(LDFLAGS) \
         $(BLAS_LIB) -o $(TEST_BIN) $@ 
 
 clean:
