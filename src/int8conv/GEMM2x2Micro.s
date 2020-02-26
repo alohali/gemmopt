@@ -1,6 +1,5 @@
 #ifdef __aarch64__
 
-#include "RPNAsmGlobal.h"
 
 .text
 .align 5

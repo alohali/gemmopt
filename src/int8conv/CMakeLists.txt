@@ -30,13 +30,13 @@ set(ANDROID_ABI "armeabi-v7a with NEON")
 
 
 set(TEST_SRCS
-  2x2i8v1.c  
+  4x4armv7.c  
   compare_matrices.c  
   copy_matrix.c  
   dclock.c  
   print_matrix.c  
   random_matrix.c  
-  GEMM2x2Micro.s
+  GEMM4x4MicroV7.S
   test_MMult.c
 )
 

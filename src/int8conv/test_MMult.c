@@ -39,8 +39,12 @@ int main(int argc, char**argv)
   int testcase[][4] = {
       //cin cout h w
       // {256, 512, 3*32, 4*32},
-      {8, 4, 4, 4},
+      {8, 16, 4, 4},
       {16, 4, 4, 4},
+      // {8, 16, 32, 32},
+      // {8, 16, 64, 32},
+      // {16, 16, 96, 80},
+
       // {128, 128, 56, 56},
       // {24, 32, 32, 32},
       // {8, 32, 32, 32},
@@ -107,7 +111,7 @@ int main(int argc, char**argv)
 
     printf("run %d %d %d %d: ", cin, cout, hout, wout);
     /* Generate random matrices A, B, Cold */
-    random_matrix(hin * win, cin, a, cin, random);
+    random_matrix(hin * win, cin, a, cin, 0);
     random_matrix(cout, cin, b, cin, random);
     convi8_ref(a, cref, b, bias, scale,   hout, wout, cin, cout);
 
