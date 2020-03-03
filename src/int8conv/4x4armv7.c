@@ -53,7 +53,6 @@ void pack_line_armv7_cpp(int cin, int8_t *from, int8_t *to)
         dst[6] = src[c + 2 * cin + 1];
         dst[7] = src[c + 3 * cin + 1];
         dst += 8;
-        printf("\n");
     }
 }
 
@@ -73,7 +72,6 @@ void pack_line_armv7(int cin, const int32_t *src, int32_t *dst)
     }
 }
 
-extern void GEMM2x2Micro(int8_t *a, const int8_t *b, int8_t *c, int cin, int cout, int cdiv8, float *scale, int32_t *bias);
 int8_t *temp = NULL;
 void kernel4x4(int cin, int cout, int hout, int wout, int8_t* sa, int8_t * sb, int8_t* sc, float *scale, int32_t *bias) 
 {
@@ -82,7 +80,8 @@ void kernel4x4(int cin, int cout, int hout, int wout, int8_t* sa, int8_t * sb, i
     }
     int8_t *a = sa, *b = sb, *c = sc;
     int cdiv8 = cin/8;
-    int w_cstride = (cdiv8+1)/2*16;
+    //warning: different from frame work here !!!!!!!!!!!!!!!!!!!!!!
+    int w_cstride = cdiv8 * 8;
     for(int h = 0; h < hout; h ++) {
         for(int w = 0; w < wout; w += 4)
         {

@@ -39,7 +39,11 @@ int main(int argc, char**argv)
   int testcase[][4] = {
       //cin cout h w
       // {256, 512, 3*32, 4*32},
+      // {8, 4, 4, 4},
+      {8, 8, 4, 4},
+      {16, 8, 4, 4},
       {8, 16, 4, 4},
+      // {8, 32, 4, 4},
       {16, 4, 4, 4},
       {8, 16, 96, 80},
       {16, 16, 96, 80},
@@ -65,13 +69,13 @@ int main(int argc, char**argv)
       // {64, 128, 3*16, 4*16},
       // /{512, 64, 3*32, 4*32},
       //mobilenet
-      {32, 64, 112, 112},
-      {64, 128, 56, 56},
-      {128, 128, 56, 56},
-      {128, 256, 28, 28},
-      {256, 256, 28, 28},
-      {256, 512, 49, 4},
-      {512, 512, 49, 4},
+      // {32, 64, 112, 112},
+      // {64, 128, 56, 56},
+      // {128, 128, 56, 56},
+      // {128, 256, 28, 28},
+      // {256, 256, 28, 28},
+      // {256, 512, 49, 4},
+      // {512, 512, 49, 4},
       // {512, 1024, 25, 2},
       // {1024, 1024, 25, 2},
   };
@@ -84,18 +88,16 @@ int main(int argc, char**argv)
   int win = wout;
   gflops = 2.0 * cin * cout * hout * wout * 1.0e-09;
 
-  /* Allocate space for the matrices */
-  /* Note: I create an extra column in A to make sure that
-       prefetching beyond the matrix does not cause a segfault */
+  int c16 = (cin + 15) & (~15);
   a = (int8_t *)malloc(hin * win * (cin) * sizeof(int8_t) + 64);
-  b = (int8_t *)malloc(cin * cout * sizeof(int8_t) + 64);
-  bpack = (int8_t *)malloc(cin * cout * NREPEATS * sizeof(int8_t) + 64);
+  b = (int8_t *)malloc(c16 * cout * sizeof(int8_t) + 64);
+  bpack = (int8_t *)malloc(c16 * cout * NREPEATS * sizeof(int8_t) + 64);
+  memset(bpack, 0, c16 * cout * NREPEATS * sizeof(int8_t) + 64);
   c = (int8_t *)malloc(hout * wout * cout * sizeof(int8_t));
   cref = (int8_t *)malloc(hout * wout * cout * sizeof(int8_t));
   scale = (float *)malloc(cout * sizeof(float));
   bias = (int32_t *)malloc(cout * sizeof(int32_t));
 
-  memset(bias, 0, cout * sizeof(int32_t));
   int random = 1;
   for (int si = 0; si < cout; si++)
   {
@@ -106,28 +108,29 @@ int main(int argc, char**argv)
     }
     else
     {
-      scale[si] = 0.1;
+      scale[si] = 0.5;
       bias[si] = 0;
     }
     }
 
     printf("run %d %d %d %d: ", cin, cout, hout, wout);
     /* Generate random matrices A, B, Cold */
-    random_matrix(hin * win, cin, a, cin, 0);
+    random_matrix(hin * win, cin, a, cin, random);
     random_matrix(cout, cin, b, cin, random);
     convi8_ref(a, cref, b, bias, scale,   hout, wout, cin, cout);
 
     packB(cin, cout, b, bpack);  
     /* check output */
     for ( rep=0; rep<2; rep++ ){
-	  memset(c, 0, hout*wout*cout*sizeof(int8_t));
+	    memset(c, 0, hout*wout*cout*sizeof(int8_t));
       kernel4x4( cin, cout, hout, wout, a,  bpack, c, scale, bias);
     }
-    if(compare)
-        diff = compare_matrices( hout*wout,cout, c, cout, cref, cout );
-    if(diff > 0.05f || diff < -0.05f){
-        compare = 0;
-        diff = 0;
+    if (compare)
+      diff = compare_matrices(hout * wout, cout, c, cout, cref, cout);
+    if (diff > 0.05f || diff < -0.05f)
+    {
+      compare = 0;
+      diff = 0;
     }
 
     kernel4x4( cin, cout, hout, wout, a,  b, c, scale, bias);

@@ -27,7 +27,8 @@ all:
 test_MMult.x: $(TEST_OBJS) $(UTIL) parameters.h 
 	$(AS) $(ASM) -o gemm.o
 	$(CC) ${CFLAGS} $(TEST_OBJS) gemm.o $(NEW).c $(UTIL) $(LDFLAGS) \
-        $(BLAS_LIB) -o $(TEST_BIN) $@ 
+        $(BLAS_LIB) -o gemm.x  
+	cp gemm.x ~/mnt
 
 clean:
 	rm -f *.o *~ core *.x
